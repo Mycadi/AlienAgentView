@@ -8,9 +8,7 @@ use std::path::PathBuf;
 use super::session::SessionStatus;
 
 fn get_claude_dir() -> PathBuf {
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".claude")
+    crate::app_settings::resolve_claude_dir()
 }
 
 const CONTEXT_TOKEN_LIMIT: u64 = 200_000;

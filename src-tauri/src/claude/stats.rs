@@ -7,9 +7,7 @@ use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 fn get_claude_dir() -> PathBuf {
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".claude")
+    crate::app_settings::resolve_claude_dir()
 }
 
 fn get_app_cache_path() -> PathBuf {

@@ -88,6 +88,17 @@ pub fn ensure_config_file() {
     }
 }
 
+/// Read claudeDir from settings and resolve `~` to home directory.
+pub fn resolve_claude_dir() -> PathBuf {
+    let raw = load().claude_dir;
+    if raw.starts_with("~/") || raw == "~" {
+        if let Some(home) = dirs::home_dir() {
+            return home.join(&raw[2..]);
+        }
+    }
+    PathBuf::from(raw)
+}
+
 #[tauri::command]
 pub fn get_app_settings() -> AppSettings {
     load()

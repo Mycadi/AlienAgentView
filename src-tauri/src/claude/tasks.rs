@@ -3,9 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 
 fn get_claude_dir() -> PathBuf {
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".claude")
+    crate::app_settings::resolve_claude_dir()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

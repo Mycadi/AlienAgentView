@@ -12,9 +12,7 @@ pub struct FileWatcher {
 
 impl FileWatcher {
     pub fn new(app_handle: AppHandle) -> Result<Self, notify::Error> {
-        let claude_dir = dirs::home_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join(".claude");
+        let claude_dir = crate::app_settings::resolve_claude_dir();
 
         let (tx, rx) = mpsc::channel();
 
