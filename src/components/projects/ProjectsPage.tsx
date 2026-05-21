@@ -9,7 +9,7 @@ import type { SessionInfo } from '../../types';
 export default function ProjectsPage() {
   const { sessions, stats } = useClaudeSessions();
   const { language, terminalCommand } = useSettingsStore();
-  const { added, hidden, scripts, scriptDelays, runningPids, load, add, remove, setScript, runProject, stopProject } = useProjectsStore();
+  const { added, scripts, scriptDelays, runningPids, load, add, remove, setScript, runProject, stopProject } = useProjectsStore();
   const isZh = language === 'zh-CN';
   const [error, setError] = useState('');
   const [confirmTarget, setConfirmTarget] = useState<string | null>(null);
@@ -21,22 +21,19 @@ export default function ProjectsPage() {
     load();
   }, [load]);
 
-  const hiddenSet = new Set(hidden.map(normalizeProjectPath));
-
-  // Group sessions by project (cwd)
-  const projects = new Map<string, SessionInfo[]>();
+  // Only show manually added projects, associate sessions by cwd
+  const sessionsByProject = new Map<string, SessionInfo[]>();
   for (const s of sessions) {
-    if (hiddenSet.has(normalizeProjectPath(s.cwd))) continue;
     const key = s.cwd;
-    if (!projects.has(key)) projects.set(key, []);
-    projects.get(key)!.push(s);
+    if (!sessionsByProject.has(key)) sessionsByProject.set(key, []);
+    sessionsByProject.get(key)!.push(s);
   }
-  // Merge manually added projects (even with no sessions)
+  const projects = new Map<string, SessionInfo[]>();
   for (const p of added) {
-    if (hiddenSet.has(normalizeProjectPath(p))) continue;
-    if (![...projects.keys()].some((k) => normalizeProjectPath(k) === normalizeProjectPath(p))) {
-      projects.set(p, []);
-    }
+    const matched = sessionsByProject.get(p)
+      ?? [...sessionsByProject.entries()].find(([k]) => normalizeProjectPath(k) === normalizeProjectPath(p))?.[1]
+      ?? [];
+    projects.set(p, matched);
   }
 
   const handleAdd = async () => {

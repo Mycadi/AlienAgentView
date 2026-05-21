@@ -3,14 +3,12 @@ import { invoke } from '@tauri-apps/api/core';
 
 export interface UserProjects {
   added: string[];
-  hidden: string[];
   scripts: Record<string, string>;
   script_delays: Record<string, number>;
 }
 
 interface ProjectsState {
   added: string[];
-  hidden: string[];
   scripts: Record<string, string>;
   scriptDelays: Record<string, number>;
   runningPids: Record<string, number[]>;
@@ -28,29 +26,28 @@ function normalize(p: string): string {
 
 export const useProjectsStore = create<ProjectsState>((set, get) => ({
   added: [],
-  hidden: [],
   scripts: {},
   scriptDelays: {},
   runningPids: {},
   load: async () => {
     try {
       const data = await invoke<UserProjects>('list_user_projects');
-      set({ added: data.added ?? [], hidden: data.hidden ?? [], scripts: data.scripts ?? {}, scriptDelays: data.script_delays ?? {} });
+      set({ added: data.added ?? [], scripts: data.scripts ?? {}, scriptDelays: data.script_delays ?? {} });
     } catch {
       // ignore
     }
   },
   add: async (path: string) => {
     const data = await invoke<UserProjects>('add_user_project', { path });
-    set({ added: data.added ?? [], hidden: data.hidden ?? [], scripts: data.scripts ?? {}, scriptDelays: data.script_delays ?? {} });
+    set({ added: data.added ?? [], scripts: data.scripts ?? {}, scriptDelays: data.script_delays ?? {} });
   },
   remove: async (path: string) => {
     const data = await invoke<UserProjects>('remove_user_project', { path });
-    set({ added: data.added ?? [], hidden: data.hidden ?? [], scripts: data.scripts ?? {}, scriptDelays: data.script_delays ?? {} });
+    set({ added: data.added ?? [], scripts: data.scripts ?? {}, scriptDelays: data.script_delays ?? {} });
   },
   setScript: async (path: string, script: string, delaySeconds: number) => {
     const data = await invoke<UserProjects>('set_project_script', { path, script, delaySeconds });
-    set({ added: data.added ?? [], hidden: data.hidden ?? [], scripts: data.scripts ?? {}, scriptDelays: data.script_delays ?? {} });
+    set({ added: data.added ?? [], scripts: data.scripts ?? {}, scriptDelays: data.script_delays ?? {} });
   },
   runProject: async (path: string) => {
     const key = normalize(path);

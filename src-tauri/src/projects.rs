@@ -8,8 +8,6 @@ pub struct UserProjects {
     #[serde(default)]
     pub added: Vec<String>,
     #[serde(default)]
-    pub hidden: Vec<String>,
-    #[serde(default)]
     pub scripts: HashMap<String, String>,
     #[serde(default)]
     pub script_delays: HashMap<String, u64>,
@@ -54,7 +52,6 @@ pub fn add_user_project(path: String) -> Result<UserProjects, String> {
         return Err(format!("Not a directory: {p}"));
     }
     let mut data = load();
-    data.hidden.retain(|x| normalize(x) != p);
     if !data.added.iter().any(|x| normalize(x) == p) {
         data.added.push(p);
     }
@@ -67,9 +64,6 @@ pub fn remove_user_project(path: String) -> Result<UserProjects, String> {
     let p = normalize(&path);
     let mut data = load();
     data.added.retain(|x| normalize(x) != p);
-    if !data.hidden.iter().any(|x| normalize(x) == p) {
-        data.hidden.push(p);
-    }
     save(&data)?;
     Ok(data)
 }
