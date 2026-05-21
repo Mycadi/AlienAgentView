@@ -14,9 +14,8 @@ pub struct UserProjects {
 }
 
 fn config_file() -> Result<PathBuf, String> {
-    let base = dirs::config_dir().ok_or_else(|| "Failed to locate config dir".to_string())?;
-    let dir = base.join("AlienAgentView");
-    fs::create_dir_all(&dir).map_err(|e| format!("Failed to create config dir: {e}"))?;
+    let exe = std::env::current_exe().map_err(|e| format!("Failed to get exe path: {e}"))?;
+    let dir = exe.parent().ok_or_else(|| "Failed to get exe directory".to_string())?;
     Ok(dir.join("projects.json"))
 }
 
