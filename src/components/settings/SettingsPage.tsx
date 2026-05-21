@@ -13,6 +13,8 @@ export default function SettingsPage() {
     setLanguage,
     refreshInterval,
     setRefreshInterval,
+    claudeDir,
+    setClaudeDir,
     terminalCommand,
     setTerminalCommand,
     inputFilterWords,
@@ -20,6 +22,9 @@ export default function SettingsPage() {
     setInputFilterWords,
   } = useSettingsStore();
   const isZh = language === 'zh-CN';
+  const [localTerminalCommand, setLocalTerminalCommand] = useState(terminalCommand);
+  const [localClaudeDir, setLocalClaudeDir] = useState(claudeDir);
+  const [localRefreshInterval, setLocalRefreshInterval] = useState(refreshInterval);
   const [filterWordsText, setFilterWordsText] = useState(inputFilterWords.join(';'));
   const [isFilterWordsDirty, setIsFilterWordsDirty] = useState(false);
   const [isSavingFilterWords, setIsSavingFilterWords] = useState(false);
@@ -28,6 +33,18 @@ export default function SettingsPage() {
   useEffect(() => {
     loadAppSettings();
   }, [loadAppSettings]);
+
+  useEffect(() => {
+    setLocalTerminalCommand(terminalCommand);
+  }, [terminalCommand]);
+
+  useEffect(() => {
+    setLocalClaudeDir(claudeDir);
+  }, [claudeDir]);
+
+  useEffect(() => {
+    setLocalRefreshInterval(refreshInterval);
+  }, [refreshInterval]);
 
   useEffect(() => {
     if (!isFilterWordsDirty) {
@@ -94,12 +111,13 @@ export default function SettingsPage() {
               type="range"
               min="1"
               max="30"
-              value={refreshInterval}
-              onChange={(e) => setRefreshInterval(Number(e.target.value))}
+              value={localRefreshInterval}
+              onChange={(e) => setLocalRefreshInterval(Number(e.target.value))}
+              onPointerUp={() => setRefreshInterval(localRefreshInterval)}
               className="flex-1 accent-accent-orange"
             />
             <span className="text-sm text-text-primary w-12 text-right">
-              {refreshInterval}s
+              {localRefreshInterval}s
             </span>
           </div>
         </div>
@@ -112,9 +130,14 @@ export default function SettingsPage() {
           <p className="text-xs text-text-muted mb-3">
             {isZh ? 'Alien Code 会话数据的位置' : 'Location of Alien Code session data'}
           </p>
-          <div className="px-3 py-2 bg-bg-primary border border-border rounded-lg text-sm text-text-secondary font-mono">
-            ~/.claude/
-          </div>
+          <input
+            type="text"
+            value={localClaudeDir}
+            onChange={(e) => setLocalClaudeDir(e.target.value)}
+            onBlur={() => setClaudeDir(localClaudeDir)}
+            placeholder="~/.claude"
+            className="w-full px-3 py-2 bg-bg-primary border border-border rounded-lg text-sm text-text-primary font-mono focus:outline-none focus:border-border-glow transition-colors"
+          />
         </div>
 
         {/* Terminal command */}
@@ -127,8 +150,9 @@ export default function SettingsPage() {
           </p>
           <input
             type="text"
-            value={terminalCommand}
-            onChange={(e) => setTerminalCommand(e.target.value)}
+            value={localTerminalCommand}
+            onChange={(e) => setLocalTerminalCommand(e.target.value)}
+            onBlur={() => setTerminalCommand(localTerminalCommand)}
             placeholder="acode"
             className="w-full px-3 py-2 bg-bg-primary border border-border rounded-lg text-sm text-text-primary font-mono focus:outline-none focus:border-border-glow transition-colors"
           />

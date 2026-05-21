@@ -1,4 +1,5 @@
 import './styles/globals.css';
+import { useEffect } from 'react';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import StatusBar from './components/layout/StatusBar';
@@ -11,7 +12,11 @@ import SettingsPage from './components/settings/SettingsPage';
 import { useSettingsStore } from './stores/settingsStore';
 
 export default function App() {
-  const { currentPage } = useSettingsStore();
+  const { currentPage, loadAppSettings } = useSettingsStore();
+
+  useEffect(() => {
+    loadAppSettings();
+  }, [loadAppSettings]);
 
   return (
     <div className="h-screen w-screen bg-[#030405] relative">

@@ -75,12 +75,15 @@ pub fn run() {
             commands::resize_captured_window,
             app_settings::get_app_settings,
             app_settings::set_input_filter_words,
+            app_settings::update_app_settings,
             projects::list_user_projects,
             projects::add_user_project,
             projects::remove_user_project,
             projects::set_project_script,
         ])
         .setup(|app| {
+            app_settings::ensure_config_file();
+
             let handle = app.handle().clone();
             let _watcher = watcher::FileWatcher::new(handle)
                 .expect("Failed to start file watcher");
