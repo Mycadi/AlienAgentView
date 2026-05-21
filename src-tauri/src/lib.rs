@@ -80,6 +80,7 @@ pub fn run() {
             projects::add_user_project,
             projects::remove_user_project,
             projects::set_project_script,
+            projects::set_project_url,
         ])
         .setup(|app| {
             app_settings::ensure_config_file();

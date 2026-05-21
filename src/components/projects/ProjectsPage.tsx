@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
+import { open as openUrl } from '@tauri-apps/plugin-shell';
 import { useClaudeSessions } from '../../hooks/useClaudeSessions';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useProjectsStore, normalizeProjectPath } from '../../stores/projectsStore';
@@ -9,13 +10,14 @@ import type { SessionInfo } from '../../types';
 export default function ProjectsPage() {
   const { sessions, stats } = useClaudeSessions();
   const { language, terminalCommand } = useSettingsStore();
-  const { added, scripts, scriptDelays, runningPids, load, add, remove, setScript, runProject, stopProject } = useProjectsStore();
+  const { added, scripts, scriptDelays, urls, runningPids, load, add, remove, setScript, setUrl, runProject, stopProject } = useProjectsStore();
   const isZh = language === 'zh-CN';
   const [error, setError] = useState('');
   const [confirmTarget, setConfirmTarget] = useState<string | null>(null);
   const [scriptTarget, setScriptTarget] = useState<string | null>(null);
   const [scriptDraft, setScriptDraft] = useState('');
   const [delayDraft, setDelayDraft] = useState(0);
+  const [urlDraft, setUrlDraft] = useState('');
 
   useEffect(() => {
     load();
@@ -82,15 +84,18 @@ export default function ProjectsPage() {
     setScriptTarget(path);
     setScriptDraft(scripts[key] ?? '');
     setDelayDraft(scriptDelays[key] ?? 0);
+    setUrlDraft(urls[key] ?? '');
   };
 
   const saveScript = async () => {
     if (!scriptTarget) return;
     try {
       await setScript(scriptTarget, scriptDraft, delayDraft);
+      await setUrl(scriptTarget, urlDraft);
       setScriptTarget(null);
       setScriptDraft('');
       setDelayDraft(0);
+      setUrlDraft('');
     } catch (e) {
       setError(String(e));
     }
@@ -140,6 +145,8 @@ export default function ProjectsPage() {
             const scriptText = scripts[projectKey] ?? '';
             const isRunning = (runningPids[projectKey]?.length ?? 0) > 0;
             const hasScript = scriptText.split('\n').some((line) => line.trim());
+            const projectUrl = urls[projectKey] ?? '';
+            const hasUrl = projectUrl.trim().length > 0;
 
             return (
               <div
@@ -158,12 +165,24 @@ export default function ProjectsPage() {
                   )}
                   <button
                     type="button"
+                    title={hasUrl ? (isZh ? '打开项目网址' : 'Open project URL') : (isZh ? '未配置网址' : 'No URL configured')}
+                    disabled={!hasUrl}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (hasUrl) openUrl(projectUrl).catch(() => {});
+                    }}
+                    className="ml-auto px-2 py-0.5 text-xs rounded border border-border text-text-muted hover:text-accent-orange hover:border-accent-orange disabled:opacity-40 disabled:hover:text-text-muted disabled:hover:border-border transition-colors"
+                  >
+                    🔗
+                  </button>
+                  <button
+                    type="button"
                     title={isZh ? '打开目录' : 'Open folder'}
                     onClick={(e) => {
                       e.stopPropagation();
                       invoke('open_folder', { path: cwd }).catch(() => {});
                     }}
-                    className="ml-auto px-2 py-0.5 text-xs rounded border border-border text-text-muted hover:text-text-primary hover:border-border-glow transition-colors"
+                    className="px-2 py-0.5 text-xs rounded border border-border text-text-muted hover:text-text-primary hover:border-border-glow transition-colors"
                   >
                     {isZh ? '打开' : 'Open'}
                   </button>
@@ -298,6 +317,16 @@ export default function ProjectsPage() {
             <p className="text-xs text-text-muted font-mono break-all mb-3">
               {scriptTarget}
             </p>
+            <label className="block text-xs text-text-muted mb-3">
+              <span className="block mb-1">{isZh ? '项目网址' : 'Project URL'}</span>
+              <input
+                type="url"
+                value={urlDraft}
+                onChange={(e) => setUrlDraft(e.target.value)}
+                placeholder="https://example.com"
+                className="w-full px-3 py-2 bg-bg-primary border border-border rounded-lg text-sm text-text-primary font-mono focus:outline-none focus:border-border-glow transition-colors"
+              />
+            </label>
             <p className="text-xs text-text-secondary mb-3">
               {isZh ? '每行一个命令；程序会按启动间隔依次打开 cmd 窗口。' : 'One command per line. The app opens cmd windows in sequence using the launch interval.'}
             </p>

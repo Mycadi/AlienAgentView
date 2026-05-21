@@ -11,6 +11,8 @@ pub struct UserProjects {
     pub scripts: HashMap<String, String>,
     #[serde(default)]
     pub script_delays: HashMap<String, u64>,
+    #[serde(default)]
+    pub urls: HashMap<String, String>,
 }
 
 fn config_file() -> Result<PathBuf, String> {
@@ -82,6 +84,20 @@ pub fn set_project_script(
     } else {
         data.scripts.insert(p.clone(), script);
         data.script_delays.insert(p, delay_seconds);
+    }
+    save(&data)?;
+    Ok(data)
+}
+
+#[tauri::command]
+pub fn set_project_url(path: String, url: String) -> Result<UserProjects, String> {
+    let p = normalize(&path);
+    let mut data = load();
+    let url = url.trim().to_string();
+    if url.is_empty() {
+        data.urls.remove(&p);
+    } else {
+        data.urls.insert(p, url);
     }
     save(&data)?;
     Ok(data)
