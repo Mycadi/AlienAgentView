@@ -234,8 +234,8 @@ fn scan_recent_done_sessions(
                 .unwrap_or("")
                 .to_string();
 
-            // Find the most recent jsonl that is NOT already known (within 24h)
-            let mut best: Option<(String, PathBuf, std::time::SystemTime)> = None;
+            // Collect all jsonl sessions within 7 days that are NOT already known
+            let mut recent: Vec<(String, PathBuf)> = Vec::new();
 
             if let Ok(files) = fs::read_dir(&project_path) {
                 for file in files.flatten() {
@@ -254,16 +254,14 @@ fn scan_recent_done_sessions(
                     let age = std::time::SystemTime::now()
                         .duration_since(modified)
                         .unwrap_or_default();
-                    if age.as_secs() > 86400 {
+                    if age.as_secs() > 604800 {
                         continue;
                     }
-                    if best.as_ref().map_or(true, |(_, _, prev_mod)| modified > *prev_mod) {
-                        best = Some((session_id.to_string(), fp, modified));
-                    }
+                    recent.push((session_id.to_string(), fp));
                 }
             }
 
-            if let Some((session_id, fp, _)) = best {
+            for (session_id, fp) in recent {
                 let cwd = dir_name.replacen('-', ":", 1).replace('-', "\\");
 
                 let (

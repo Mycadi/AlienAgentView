@@ -43,7 +43,7 @@ export default function SessionsPage() {
   });
 
   const sorted = [...filtered].sort(
-    (a, b) => b.startedAt - a.startedAt
+    (a, b) => (b.completedAt ?? b.startedAt) - (a.completedAt ?? a.startedAt)
   );
 
   const handleProjectChange = (value: string) => {
@@ -89,7 +89,10 @@ export default function SessionsPage() {
     <div className="h-full overflow-y-auto px-6 py-4">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-bold text-text-primary mb-1">{isZh ? '会话' : 'Sessions'}</h2>
+          <h2 className="text-xl font-bold text-text-primary mb-1">
+            {isZh ? '会话' : 'Sessions'}
+            <span className="ml-2 text-sm font-normal text-text-muted">{sorted.length}</span>
+          </h2>
           <p className="text-sm text-text-muted">
             {isZh ? '所有 Alien Code 会话' : 'All Alien Code sessions'}
           </p>

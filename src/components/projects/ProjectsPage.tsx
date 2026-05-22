@@ -103,7 +103,10 @@ export default function ProjectsPage() {
 
   return (
     <div className="h-full overflow-y-auto px-6 py-4">
-      <h2 className="text-xl font-bold text-text-primary mb-1">{isZh ? '项目' : 'Projects'}</h2>
+      <h2 className="text-xl font-bold text-text-primary mb-1">
+        {isZh ? '项目' : 'Projects'}
+        <span className="ml-2 text-sm font-normal text-text-muted">{projects.size}</span>
+      </h2>
       <p className="text-sm text-text-muted mb-4">
         {isZh ? '所有包含 Alien Code 活动的项目' : 'All projects with Alien Code activity'}
       </p>
