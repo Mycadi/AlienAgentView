@@ -12,7 +12,7 @@ interface Props {
 }
 
 export default function KanbanColumn({ title, subtitle, status, sessions, dotColor, titleColor }: Props) {
-  const displaySessions = status === 'working'
+  const displaySessions = status === 'working' || status === 'needsinput'
     ? [...sessions].sort(compareSessionByProjectName)
     : sessions;
 
