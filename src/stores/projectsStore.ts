@@ -13,7 +13,7 @@ interface ProjectsState {
   scripts: Record<string, string>;
   scriptDelays: Record<string, number>;
   urls: Record<string, string>;
-  runningPids: Record<string, number[]>;
+  runningTags: Record<string, string[]>;
   load: () => Promise<void>;
   add: (path: string) => Promise<void>;
   remove: (path: string) => Promise<void>;
@@ -32,7 +32,7 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
   scripts: {},
   scriptDelays: {},
   urls: {},
-  runningPids: {},
+  runningTags: {},
   load: async () => {
     try {
       const data = await invoke<UserProjects>('list_user_projects');
@@ -61,20 +61,20 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
     const key = normalize(path);
     const scripts = get().scripts[key] ?? '';
     const delaySeconds = get().scriptDelays[key] ?? 0;
-    const pids = await invoke<number[]>('run_project', { path, scripts, delaySeconds });
-    if (pids.length > 0) {
-      set((state) => ({ runningPids: { ...state.runningPids, [key]: pids } }));
+    const tags = await invoke<string[]>('run_project', { path, scripts, delaySeconds });
+    if (tags.length > 0) {
+      set((state) => ({ runningTags: { ...state.runningTags, [key]: tags } }));
     }
   },
   stopProject: async (path: string) => {
     const key = normalize(path);
-    const pids = get().runningPids[key] ?? [];
-    if (pids.length === 0) return;
-    await Promise.all(pids.map((pid) => invoke('stop_project', { pid })));
+    const tags = get().runningTags[key] ?? [];
+    if (tags.length === 0) return;
+    await Promise.all(tags.map((tag) => invoke('stop_project', { tag })));
     set((state) => {
-      const runningPids = { ...state.runningPids };
-      delete runningPids[key];
-      return { runningPids };
+      const runningTags = { ...state.runningTags };
+      delete runningTags[key];
+      return { runningTags };
     });
   },
 }));

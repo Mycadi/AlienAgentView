@@ -10,7 +10,7 @@ import type { SessionInfo } from '../../types';
 export default function ProjectsPage() {
   const { sessions, stats } = useClaudeSessions();
   const { language, terminalCommand } = useSettingsStore();
-  const { added, scripts, scriptDelays, urls, runningPids, load, add, remove, setScript, setUrl, runProject, stopProject } = useProjectsStore();
+  const { added, scripts, scriptDelays, urls, runningTags, load, add, remove, setScript, setUrl, runProject, stopProject } = useProjectsStore();
   const isZh = language === 'zh-CN';
   const [error, setError] = useState('');
   const [confirmTarget, setConfirmTarget] = useState<string | null>(null);
@@ -146,7 +146,7 @@ export default function ProjectsPage() {
             );
             const projectKey = normalizeProjectPath(cwd);
             const scriptText = scripts[projectKey] ?? '';
-            const isRunning = (runningPids[projectKey]?.length ?? 0) > 0;
+            const isRunning = (runningTags[projectKey]?.length ?? 0) > 0;
             const hasScript = scriptText.split('\n').some((line) => line.trim());
             const projectUrl = urls[projectKey] ?? '';
             const hasUrl = projectUrl.trim().length > 0;

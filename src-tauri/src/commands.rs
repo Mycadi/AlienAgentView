@@ -275,13 +275,13 @@ pub fn open_terminal(path: String, command: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn run_project(path: String, scripts: String, delay_seconds: u64) -> Result<Vec<u32>, String> {
+pub async fn run_project(path: String, scripts: String, delay_seconds: u64) -> Result<Vec<String>, String> {
     run_project_native(&path, &scripts, delay_seconds).await
 }
 
 #[tauri::command]
-pub fn stop_project(pid: u32) -> Result<(), String> {
-    stop_project_native(pid)
+pub fn stop_project(tag: String) -> Result<(), String> {
+    stop_project_native(&tag)
 }
 
 #[cfg(target_os = "windows")]
@@ -319,7 +319,7 @@ fn open_terminal_native(path: &str, command: &str) -> Result<(), String> {
         .map_err(|e| format!("Failed to open terminal: {e}"))
 }
 
-async fn run_project_native(path: &str, scripts: &str, delay_seconds: u64) -> Result<Vec<u32>, String> {
+async fn run_project_native(path: &str, scripts: &str, delay_seconds: u64) -> Result<Vec<String>, String> {
     let commands: Vec<&str> = scripts
         .lines()
         .map(str::trim)
@@ -329,56 +329,64 @@ async fn run_project_native(path: &str, scripts: &str, delay_seconds: u64) -> Re
         return Err("Project script is empty".to_string());
     }
 
-    let mut pids = Vec::new();
+    let mut tags = Vec::new();
     for (index, command) in commands.iter().enumerate() {
         if index > 0 && delay_seconds > 0 {
             tokio::time::sleep(std::time::Duration::from_secs(delay_seconds)).await;
         }
-        pids.push(run_project_command(path, command)?);
+        tags.push(run_project_command(path, command)?);
     }
 
-    Ok(pids)
+    Ok(tags)
 }
 
 #[cfg(target_os = "windows")]
-fn run_project_command(path: &str, command: &str) -> Result<u32, String> {
-    // Use "cmd /c start" to open a new visible console window, same pattern
-    // as open_terminal_native. This avoids "invalid handle" errors in GUI
-    // mode (exe) that occur with CREATE_NEW_CONSOLE when the parent process
-    // has no console and standard handles are null.
+fn run_project_command(path: &str, command: &str) -> Result<String, String> {
+    // Spawn cmd.exe with CREATE_NEW_CONSOLE so it gets its own visible window.
+    // This gives us the real PID of the cmd process (unlike "start" which creates
+    // an intermediate process that exits immediately).
+    // DETACHED_PROCESS (0x8) is NOT set — we want a console.
+    // CREATE_NEW_CONSOLE = 0x10
+    use std::os::windows::process::CommandExt;
+    const CREATE_NEW_CONSOLE: u32 = 0x00000010;
+
     let child = std::process::Command::new("cmd")
-        .args(["/c", "start", "", "cmd", "/k", command])
+        .args(["/k", command])
         .current_dir(path)
+        .creation_flags(CREATE_NEW_CONSOLE)
         .spawn()
         .map_err(|e| format!("Failed to run project: {e}"))?;
 
-    Ok(child.id())
+    Ok(child.id().to_string())
 }
 
 #[cfg(not(target_os = "windows"))]
-fn run_project_command(path: &str, command: &str) -> Result<u32, String> {
+fn run_project_command(path: &str, command: &str) -> Result<String, String> {
     let child = std::process::Command::new("sh")
         .args(["-lc", command])
         .current_dir(path)
         .spawn()
         .map_err(|e| format!("Failed to run project: {e}"))?;
 
-    Ok(child.id())
+    // Non-Windows: use pid as tag string for unified interface
+    Ok(child.id().to_string())
 }
 
 #[cfg(target_os = "windows")]
-fn stop_project_native(pid: u32) -> Result<(), String> {
+fn stop_project_native(tag: &str) -> Result<(), String> {
+    // tag is the PID string; kill the process tree
     std::process::Command::new("taskkill")
-        .args(["/PID", &pid.to_string(), "/T", "/F"])
+        .args(["/PID", tag, "/T", "/F"])
         .spawn()
         .map(|_| ())
         .map_err(|e| format!("Failed to stop project: {e}"))
 }
 
 #[cfg(not(target_os = "windows"))]
-fn stop_project_native(pid: u32) -> Result<(), String> {
+fn stop_project_native(tag: &str) -> Result<(), String> {
+    // Non-Windows: tag is the pid string
     std::process::Command::new("kill")
-        .arg(pid.to_string())
+        .arg(tag)
         .spawn()
         .map(|_| ())
         .map_err(|e| format!("Failed to stop project: {e}"))
