@@ -75,8 +75,9 @@ pub fn get_all_sessions() -> Vec<SessionInfo> {
     let mut sys = SYSTEM_CACHE.lock().unwrap();
     sys.refresh_processes_specifics(ProcessesToUpdate::All, true, ProcessRefreshKind::nothing());
 
-    // Collect all session files, deduplicate by cwd (keep the newest per cwd)
-    let mut by_cwd: std::collections::HashMap<String, (SessionFile, PathBuf)> =
+    // Collect all session files, deduplicate by session_id (not by cwd)
+    // so that multiple acode instances on the same project are all visible.
+    let mut by_session_id: std::collections::HashMap<String, (SessionFile, PathBuf)> =
         std::collections::HashMap::new();
 
     if let Ok(entries) = fs::read_dir(&sessions_dir) {
@@ -85,14 +86,7 @@ pub fn get_all_sessions() -> Vec<SessionInfo> {
             if path.extension().map_or(false, |e| e == "json") {
                 if let Ok(content) = fs::read_to_string(&path) {
                     if let Ok(sf) = serde_json::from_str::<SessionFile>(&content) {
-                        let key = sf.cwd.clone();
-                        let replace = match by_cwd.get(&key) {
-                            Some((existing, _)) => sf.started_at > existing.started_at,
-                            None => true,
-                        };
-                        if replace {
-                            by_cwd.insert(key, (sf, path));
-                        }
+                        by_session_id.entry(sf.session_id.clone()).or_insert((sf, path));
                     }
                 }
             }
@@ -104,19 +98,12 @@ pub fn get_all_sessions() -> Vec<SessionInfo> {
         std::collections::HashSet::new();
 
     // Build session info from deduplicated entries
-    for (sf, path) in by_cwd.into_values() {
+    for (sf, path) in by_session_id.into_values() {
         let is_alive = sys.process(sysinfo::Pid::from_u32(sf.pid)).is_some();
         let project_name = extract_project_name(&sf.cwd);
         let dir_name = encode_path_to_dir_name(&sf.cwd);
 
-        all_known_session_ids.insert(sf.session_id.clone());
-
-        let session_id = if is_alive {
-            get_latest_project_session_id(&dir_name)
-                .unwrap_or_else(|| sf.session_id.clone())
-        } else {
-            sf.session_id.clone()
-        };
+        let session_id = sf.session_id.clone();
         all_known_session_ids.insert(session_id.clone());
 
         // Get conversation status
