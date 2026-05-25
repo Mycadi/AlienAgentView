@@ -13,7 +13,7 @@ interface SessionState {
   refreshStatsCache: () => Promise<void>;
   refreshStatsCacheIncremental: () => Promise<void>;
   refreshAll: () => Promise<void>;
-  focusSessionWindow: (sessionId: string) => Promise<void>;
+  focusSessionWindow: (sessionId: string, pid?: number) => Promise<void>;
 }
 
 export const useSessionStore = create<SessionState>((set, get) => ({
@@ -56,11 +56,17 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     set({ loading: false });
   },
 
-  focusSessionWindow: async (sessionId: string) => {
+  focusSessionWindow: async (sessionId: string, pid?: number) => {
     try {
       await invoke('focus_window_by_session_id', { sessionId });
-    } catch (e) {
-      console.error('Failed to focus session window:', e);
+    } catch {
+      if (pid && pid > 0) {
+        try {
+          await invoke('focus_session_window', { pid });
+        } catch (e2) {
+          console.error('Failed to focus session window:', e2);
+        }
+      }
     }
   },
 }));

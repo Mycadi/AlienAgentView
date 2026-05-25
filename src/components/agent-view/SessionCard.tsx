@@ -23,7 +23,7 @@ export default function SessionCard({ session }: Props) {
           setShowModifiedFiles((value) => !value);
           return;
         }
-        focusSessionWindow(session.sessionId);
+        focusSessionWindow(session.sessionId, session.pid);
       }}
     >
       <div className="flex items-start justify-between gap-[12px]">
