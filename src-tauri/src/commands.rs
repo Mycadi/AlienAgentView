@@ -286,9 +286,19 @@ pub fn stop_project(tag: String) -> Result<(), String> {
 
 #[cfg(target_os = "windows")]
 fn open_terminal_native(path: &str, command: &str) -> Result<(), String> {
-    std::process::Command::new("cmd")
-        .args(["/c", "start", "", "cmd", "/k", command])
-        .current_dir(path)
+    use std::os::windows::process::CommandExt;
+    const CREATE_NEW_CONSOLE: u32 = 0x00000010;
+
+    let command = command.trim();
+    let mut cmd = std::process::Command::new("cmd");
+    if command.is_empty() {
+        cmd.arg("/k");
+    } else {
+        cmd.args(["/k", command]);
+    }
+
+    cmd.current_dir(path)
+        .creation_flags(CREATE_NEW_CONSOLE)
         .spawn()
         .map(|_| ())
         .map_err(|e| format!("Failed to open terminal: {e}"))

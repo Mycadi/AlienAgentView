@@ -194,7 +194,7 @@ export default function ProjectsPage() {
                     title={isZh ? '在此目录启动终端' : 'Open terminal here'}
                     onClick={(e) => {
                       e.stopPropagation();
-                      invoke('open_terminal', { path: cwd, command: terminalCommand }).catch(() => {});
+                      invoke('open_terminal', { path: cwd, command: terminalCommand || 'acode' }).catch((e) => setError(String(e)));
                     }}
                     className="px-2 py-0.5 text-xs rounded border border-border text-text-muted hover:text-accent-orange hover:border-accent-orange transition-colors"
                   >

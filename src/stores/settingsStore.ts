@@ -67,7 +67,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
         inputFilterWords: settings.inputFilterWords ?? [],
         language: (settings.language as Language) ?? 'zh-CN',
         refreshInterval: settings.refreshInterval ?? 3,
-        terminalCommand: settings.terminalCommand ?? 'acode',
+        terminalCommand: settings.terminalCommand || 'acode',
         claudeDir: settings.claudeDir ?? '~/.claude',
       });
     } catch {
