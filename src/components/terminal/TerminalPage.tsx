@@ -247,6 +247,7 @@ function computeCells(
   totalH: number
 ): { x: number; y: number; w: number; h: number }[] {
   if (count === 0) return [];
+  if (count === 1) return [{ x: 0, y: 0, w: totalW, h: totalH }];
   const gap = 4; // physical px gap
 
   const grid = (cols: number) => {
