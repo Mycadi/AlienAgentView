@@ -144,6 +144,16 @@ pub fn get_all_sessions() -> Vec<SessionInfo> {
             }
         }
 
+        // Only allow NeedsInput if the AAV title explicitly says "input"
+        if status == SessionStatus::NeedsInput
+            && !window_statuses
+                .get(&session_id)
+                .map_or(false, |s| s == "input")
+        {
+            status = SessionStatus::Working;
+            is_interacting = false;
+        }
+
         let status = if !is_alive {
             SessionStatus::Done
         } else {
