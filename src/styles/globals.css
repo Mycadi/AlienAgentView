@@ -39,6 +39,17 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #242a37; border-radius: 999px; }
 
+/* xterm custom DOM scrollbar: narrow slider, transparent track */
+.xterm .xterm-scrollable-element > .scrollbar {
+  background: transparent !important;
+}
+.xterm .xterm-scrollable-element > .scrollbar > .slider {
+  width: 4px !important;
+  left: auto !important;
+  right: 1px !important;
+  border-radius: 999px !important;
+}
+
 [data-tauri-drag-region] { -webkit-app-region: drag; }
 [data-tauri-drag-region] button,
 [data-tauri-drag-region] input { -webkit-app-region: no-drag; }
