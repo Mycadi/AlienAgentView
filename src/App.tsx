@@ -11,12 +11,14 @@ import TerminalPage from './components/terminal/TerminalPage';
 import SettingsPage from './components/settings/SettingsPage';
 import RunTerminalPanel from './components/run-terminal/RunTerminalPanel';
 import { useSettingsStore } from './stores/settingsStore';
+import { initPtyListeners } from './stores/runTerminalStore';
 
 export default function App() {
   const { currentPage, loadAppSettings } = useSettingsStore();
 
   useEffect(() => {
     loadAppSettings();
+    initPtyListeners();
   }, [loadAppSettings]);
 
   return (

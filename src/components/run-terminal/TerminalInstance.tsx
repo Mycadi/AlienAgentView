@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { invoke } from '@tauri-apps/api/core';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { ptyOutputRouter } from '../../stores/runTerminalStore';
 import '@xterm/xterm/css/xterm.css';
 
 interface Props {
@@ -58,14 +58,8 @@ export default function TerminalInstance({ ptyId, visible }: Props) {
 
     invoke('pty_resize', { id: ptyId, cols: term.cols, rows: term.rows }).catch(() => {});
 
-    let unlisten: UnlistenFn | null = null;
-    listen<{ id: string; data: number[] }>('pty-output', (event) => {
-      if (event.payload.id === ptyId) {
-        term.write(new Uint8Array(event.payload.data));
-      }
-    }).then((fn) => {
-      unlisten = fn;
-    });
+    // Register writer — replays buffered data, then receives live output
+    ptyOutputRouter.register(ptyId, (data) => term.write(data));
 
     const disposeData = term.onData((data) => {
       invoke('pty_write', { id: ptyId, data: Array.from(new TextEncoder().encode(data)) }).catch(() => {});
@@ -82,7 +76,7 @@ export default function TerminalInstance({ ptyId, visible }: Props) {
     return () => {
       ro.disconnect();
       disposeData.dispose();
-      unlisten?.();
+      ptyOutputRouter.remove(ptyId);
       term.dispose();
       termRef.current = null;
       fitRef.current = null;
