@@ -487,15 +487,16 @@ struct AavWindow {
     session_id: String,
     project: String,
     pid: u32,
+    status: Option<String>,
 }
 
 #[cfg(target_os = "windows")]
-fn parse_aav_window_title(title: &str) -> Option<(String, String)> {
+fn parse_aav_window_title(title: &str) -> Option<(String, String, Option<String>)> {
     let aav_pos = title.find("AAV:")?;
     let before_aav = title[..aav_pos].trim();
     let after_aav = &title[aav_pos + 4..];
 
-    // New format: "{project} · AAV:{session_id}"
+    // New format: "{project} · AAV:{session_id}" or "{project} · AAV:{session_id}:{status}"
     if before_aav.ends_with('·') {
         let project = before_aav
             .trim_end_matches('·')
@@ -503,9 +504,21 @@ fn parse_aav_window_title(title: &str) -> Option<(String, String)> {
             .trim_start_matches(['*', '?', ' '])
             .trim()
             .to_string();
-        let session_id = after_aav.trim().to_string();
+        let after_aav = after_aav.trim();
+        // Split on last colon to extract optional status
+        let (session_id, status) = if let Some(last_colon) = after_aav.rfind(':') {
+            let sid = after_aav[..last_colon].to_string();
+            let st = after_aav[last_colon + 1..].to_string();
+            if matches!(st.as_str(), "working" | "done" | "error" | "input") {
+                (sid, Some(st))
+            } else {
+                (after_aav.to_string(), None)
+            }
+        } else {
+            (after_aav.to_string(), None)
+        };
         if !session_id.is_empty() {
-            return Some((session_id, project));
+            return Some((session_id, project, status));
         }
     }
 
@@ -516,7 +529,7 @@ fn parse_aav_window_title(title: &str) -> Option<(String, String)> {
     if session_id.is_empty() {
         None
     } else {
-        Some((session_id, project))
+        Some((session_id, project, None))
     }
 }
 
@@ -560,16 +573,32 @@ fn collect_aav_windows() -> Vec<AavWindow> {
     let raw = RESULTS.lock().unwrap().clone();
     raw.into_iter()
         .filter_map(|(hwnd_val, title, pid)| {
-            let (session_id, project) = parse_aav_window_title(&title)?;
+            let (session_id, project, status) = parse_aav_window_title(&title)?;
             Some(AavWindow {
                 hwnd: HWND(hwnd_val as _),
                 title,
                 session_id,
                 project,
                 pid,
+                status,
             })
         })
         .collect()
+}
+
+/// Collect session statuses from AAV window titles.
+/// Returns a map of session_id → status string.
+#[cfg(target_os = "windows")]
+pub fn get_aav_session_statuses() -> std::collections::HashMap<String, String> {
+    collect_aav_windows()
+        .into_iter()
+        .filter_map(|w| w.status.map(|s| (w.session_id, s)))
+        .collect()
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn get_aav_session_statuses() -> std::collections::HashMap<String, String> {
+    std::collections::HashMap::new()
 }
 
 #[cfg(target_os = "windows")]

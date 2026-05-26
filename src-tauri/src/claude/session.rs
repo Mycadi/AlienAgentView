@@ -97,6 +97,9 @@ pub fn get_all_sessions() -> Vec<SessionInfo> {
     let mut all_known_session_ids: std::collections::HashSet<String> =
         std::collections::HashSet::new();
 
+    // Collect AAV window title statuses once (acode puts status in window title)
+    let window_statuses = crate::commands::get_aav_session_statuses();
+
     // Build session info from deduplicated entries
     for (sf, path) in by_session_id.into_values() {
         let is_alive = sys.process(sysinfo::Pid::from_u32(sf.pid)).is_some();
@@ -108,14 +111,38 @@ pub fn get_all_sessions() -> Vec<SessionInfo> {
 
         // Get conversation status
         let (
-            status,
+            mut status,
             last_activity,
             current_file,
             total_tokens,
             context_percentage,
             modified_files,
-            is_interacting,
+            mut is_interacting,
         ) = super::conversation::get_session_status(&dir_name, &session_id);
+
+        // Override status from AAV window title if available (acode sets it)
+        if let Some(title_status) = window_statuses.get(&session_id) {
+            match title_status.as_str() {
+                "working" => {
+                    status = SessionStatus::Working;
+                    is_interacting = true;
+                }
+                "done" => {
+                    // Alive process with "done" title → show in Working with gray dot
+                    status = SessionStatus::Working;
+                    is_interacting = false;
+                }
+                "error" => {
+                    status = SessionStatus::Error;
+                    is_interacting = false;
+                }
+                "input" => {
+                    status = SessionStatus::NeedsInput;
+                    is_interacting = false;
+                }
+                _ => {}
+            }
+        }
 
         let status = if !is_alive {
             SessionStatus::Done
