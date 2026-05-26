@@ -9,6 +9,7 @@ import ProjectsPage from './components/projects/ProjectsPage';
 import SessionsPage from './components/sessions/SessionsPage';
 import TerminalPage from './components/terminal/TerminalPage';
 import SettingsPage from './components/settings/SettingsPage';
+import RunTerminalPanel from './components/run-terminal/RunTerminalPanel';
 import { useSettingsStore } from './stores/settingsStore';
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
             {currentPage === 'terminal' && <TerminalPage />}
             {currentPage === 'settings' && <SettingsPage />}
           </main>
+          <RunTerminalPanel />
           <StatusBar />
         </div>
       </div>

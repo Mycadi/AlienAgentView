@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
+import { useRunTerminalStore } from './runTerminalStore';
 
 export interface UserProjects {
   added: string[];
@@ -61,7 +62,32 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
     const key = normalize(path);
     const scripts = get().scripts[key] ?? '';
     const delaySeconds = get().scriptDelays[key] ?? 0;
-    const tags = await invoke<string[]>('run_project', { path, scripts, delaySeconds });
+    const commands = scripts.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (commands.length === 0) return;
+
+    const termStore = useRunTerminalStore.getState();
+    const tags: string[] = [];
+    const projectName = key.split('\\').pop() || key;
+
+    for (let i = 0; i < commands.length; i++) {
+      if (i > 0 && delaySeconds > 0) {
+        await new Promise((r) => setTimeout(r, delaySeconds * 1000));
+      }
+      const ptyId = await invoke<string>('pty_spawn', {
+        path,
+        command: commands[i],
+        cols: 120,
+        rows: 30,
+      });
+      tags.push(ptyId);
+      termStore.addTab({
+        id: ptyId,
+        label: commands.length > 1 ? `${projectName}:${i + 1}` : projectName,
+        projectKey: key,
+        alive: true,
+      });
+    }
+
     if (tags.length > 0) {
       set((state) => ({ runningTags: { ...state.runningTags, [key]: tags } }));
     }
@@ -70,7 +96,8 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
     const key = normalize(path);
     const tags = get().runningTags[key] ?? [];
     if (tags.length === 0) return;
-    await Promise.all(tags.map((tag) => invoke('stop_project', { tag })));
+    await Promise.all(tags.map((id) => invoke('pty_kill', { id })));
+    useRunTerminalStore.getState().closeTabsByProject(key);
     set((state) => {
       const runningTags = { ...state.runningTags };
       delete runningTags[key];

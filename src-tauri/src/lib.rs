@@ -2,6 +2,7 @@ mod app_settings;
 mod claude;
 mod commands;
 mod projects;
+mod pty_manager;
 mod watcher;
 
 use std::sync::{
@@ -66,8 +67,6 @@ pub fn run() {
             commands::focus_window_by_hwnd,
             commands::open_folder,
             commands::open_terminal,
-            commands::run_project,
-            commands::stop_project,
             commands::capture_windows_by_session_ids,
             commands::release_window,
             commands::release_all_windows,
@@ -81,8 +80,14 @@ pub fn run() {
             projects::remove_user_project,
             projects::set_project_script,
             projects::set_project_url,
+            pty_manager::pty_spawn,
+            pty_manager::pty_write,
+            pty_manager::pty_resize,
+            pty_manager::pty_kill,
+            pty_manager::pty_close,
         ])
         .setup(|app| {
+            app.manage(pty_manager::PtyManager::new());
             app_settings::ensure_config_file();
 
             let handle = app.handle().clone();

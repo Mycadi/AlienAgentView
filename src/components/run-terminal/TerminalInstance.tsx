@@ -26,9 +26,6 @@ export default function TerminalInstance({ ptyId, visible }: Props) {
         foreground: '#c8ccd4',
         cursor: '#c9893a',
         selectionBackground: '#c9893a40',
-        scrollbarSliderBackground: '#242a3780',
-        scrollbarSliderHoverBackground: '#2e354890',
-        scrollbarSliderActiveBackground: '#363d50',
         black: '#1e222a',
         red: '#e06c75',
         green: '#98c379',
@@ -59,10 +56,8 @@ export default function TerminalInstance({ ptyId, visible }: Props) {
     termRef.current = term;
     fitRef.current = fit;
 
-    // Send initial size
     invoke('pty_resize', { id: ptyId, cols: term.cols, rows: term.rows }).catch(() => {});
 
-    // Listen for PTY output
     let unlisten: UnlistenFn | null = null;
     listen<{ id: string; data: number[] }>('pty-output', (event) => {
       if (event.payload.id === ptyId) {
@@ -72,15 +67,15 @@ export default function TerminalInstance({ ptyId, visible }: Props) {
       unlisten = fn;
     });
 
-    // Forward user input to PTY
     const disposeData = term.onData((data) => {
       invoke('pty_write', { id: ptyId, data: Array.from(new TextEncoder().encode(data)) }).catch(() => {});
     });
 
-    // Handle resize
     const ro = new ResizeObserver(() => {
-      fit.fit();
-      invoke('pty_resize', { id: ptyId, cols: term.cols, rows: term.rows }).catch(() => {});
+      if (containerRef.current && containerRef.current.offsetWidth > 0) {
+        fit.fit();
+        invoke('pty_resize', { id: ptyId, cols: term.cols, rows: term.rows }).catch(() => {});
+      }
     });
     ro.observe(containerRef.current);
 
@@ -94,11 +89,12 @@ export default function TerminalInstance({ ptyId, visible }: Props) {
     };
   }, [ptyId]);
 
-  // Re-fit when visibility changes
+  // Re-fit when becoming visible
   useEffect(() => {
-    if (visible && fitRef.current) {
-      // Small delay to ensure DOM has updated
-      requestAnimationFrame(() => fitRef.current?.fit());
+    if (visible && fitRef.current && termRef.current) {
+      requestAnimationFrame(() => {
+        fitRef.current?.fit();
+      });
     }
   }, [visible]);
 
