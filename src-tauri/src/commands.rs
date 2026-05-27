@@ -276,22 +276,48 @@ pub fn open_terminal(path: String, command: String) -> Result<(), String> {
 
 #[cfg(target_os = "windows")]
 fn open_terminal_native(path: &str, command: &str) -> Result<(), String> {
-    use std::os::windows::process::CommandExt;
-    const CREATE_NEW_CONSOLE: u32 = 0x00000010;
+    use windows::core::PWSTR;
+    use windows::Win32::System::Threading::{
+        CreateProcessW, PROCESS_INFORMATION, STARTUPINFOW,
+        CREATE_NEW_CONSOLE, CREATE_UNICODE_ENVIRONMENT,
+    };
+    use windows::Win32::Foundation::CloseHandle;
 
     let command = command.trim();
-    let mut cmd = std::process::Command::new("cmd");
-    if command.is_empty() {
-        cmd.arg("/k");
+    let cmd_line = if command.is_empty() {
+        "cmd /k".to_string()
     } else {
-        cmd.args(["/k", command]);
+        format!("cmd /k {command}")
+    };
+    let mut cmd_line_wide: Vec<u16> = cmd_line.encode_utf16().chain(std::iter::once(0)).collect();
+    let path_wide: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
+
+    let si = STARTUPINFOW {
+        cb: std::mem::size_of::<STARTUPINFOW>() as u32,
+        ..Default::default()
+    };
+    let mut pi = PROCESS_INFORMATION::default();
+
+    unsafe {
+        CreateProcessW(
+            None,
+            Some(PWSTR(cmd_line_wide.as_mut_ptr())),
+            None,
+            None,
+            false,   // bInheritHandles = FALSE
+            CREATE_NEW_CONSOLE | CREATE_UNICODE_ENVIRONMENT,
+            None,
+            PWSTR(path_wide.as_ptr() as *mut _),
+            &si,
+            &mut pi,
+        )
+        .map_err(|e| format!("Failed to open terminal: {e}"))?;
+
+        let _ = CloseHandle(pi.hProcess);
+        let _ = CloseHandle(pi.hThread);
     }
 
-    cmd.current_dir(path)
-        .creation_flags(CREATE_NEW_CONSOLE)
-        .spawn()
-        .map(|_| ())
-        .map_err(|e| format!("Failed to open terminal: {e}"))
+    Ok(())
 }
 
 #[cfg(target_os = "macos")]
