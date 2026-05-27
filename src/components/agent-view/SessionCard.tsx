@@ -13,7 +13,7 @@ export default function SessionCard({ session }: Props) {
   const elapsed = formatElapsed(session.elapsedSeconds, isZh);
   const file = session.currentFile ? shortenPath(session.currentFile) : shortenPath(session.cwd);
   const title = session.projectName || (session.currentTask ?? sampleTitle(session.status));
-  const dotStyle = getDotStyle(session.status, session.isInteracting);
+  const dotStyle = getDotStyle(session.status);
 
   return (
     <article
@@ -84,32 +84,17 @@ export default function SessionCard({ session }: Props) {
   );
 }
 
-function getDotStyle(status: string, isInteracting: boolean) {
-  if (status === 'error') {
-    return {
-      backgroundColor: '#ef4444',
-      boxShadow: '0 0 8px rgba(239,68,68,0.75)',
-      pulse: false,
-    };
-  }
+function getDotStyle(status: string) {
   if (status !== 'working') return null;
-  if (isInteracting) {
-    return {
-      backgroundColor: '#57b86a',
-      boxShadow: '0 0 8px rgba(87,184,106,0.75)',
-      pulse: true,
-    };
-  }
   return {
-    backgroundColor: '#5f6675',
-    boxShadow: 'none',
-    pulse: false,
+    backgroundColor: '#57b86a',
+    boxShadow: '0 0 8px rgba(87,184,106,0.75)',
+    pulse: true,
   };
 }
 
 function CardIcon({ status }: { status: string }) {
   if (status === 'working') return <span className="mt-[2px] w-[18px] h-[18px] shrink-0 flex items-center justify-center text-[13px] font-bold font-mono text-[#5579df]">&lt;/&gt;</span>;
-  if (status === 'error') return <span className="mt-[1px] w-[18px] h-[18px] shrink-0 rounded-full border border-status-error text-status-error text-[12px] font-bold flex items-center justify-center">!</span>;
   if (status === 'needsinput') return <span className="mt-[1px] w-[18px] h-[18px] shrink-0 rounded-full border border-status-needs-input text-status-needs-input text-[12px] font-bold flex items-center justify-center">?</span>;
   return <span className="mt-[1px] w-[18px] h-[18px] shrink-0 rounded-full border border-status-done text-status-done flex items-center justify-center"><svg className="w-[12px] h-[12px]" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3.5 8.2 6.4 11 12.8 4.5" strokeLinecap="round" strokeLinejoin="round"/></svg></span>;
 }

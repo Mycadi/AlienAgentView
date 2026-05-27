@@ -74,7 +74,7 @@ export function useClaudeSessions() {
   const refreshAll = useSessionStore((s) => s.refreshAll);
 
   const workingSessions = useMemo(
-    () => sessions.filter((s) => s.status === 'working' || s.status === 'error'),
+    () => sessions.filter((s) => s.status === 'working'),
     [sessions]
   );
   const needsInputSessions = useMemo(

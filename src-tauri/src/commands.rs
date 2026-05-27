@@ -612,19 +612,30 @@ fn collect_aav_windows() -> Vec<AavWindow> {
         .collect()
 }
 
+/// Info about an AAV window's status, extracted from its title.
+#[derive(Debug, Clone)]
+pub struct AavWindowStatus {
+    pub session_id: String,
+    pub project: String,
+    pub status: String,
+}
+
 /// Collect session statuses from AAV window titles.
-/// Returns a map of session_id → status string.
 #[cfg(target_os = "windows")]
-pub fn get_aav_session_statuses() -> std::collections::HashMap<String, String> {
+pub fn get_aav_session_statuses() -> Vec<AavWindowStatus> {
     collect_aav_windows()
         .into_iter()
-        .filter_map(|w| w.status.map(|s| (w.session_id, s)))
+        .filter_map(|w| w.status.map(|s| AavWindowStatus {
+            session_id: w.session_id,
+            project: w.project,
+            status: s,
+        }))
         .collect()
 }
 
 #[cfg(not(target_os = "windows"))]
-pub fn get_aav_session_statuses() -> std::collections::HashMap<String, String> {
-    std::collections::HashMap::new()
+pub fn get_aav_session_statuses() -> Vec<AavWindowStatus> {
+    Vec::new()
 }
 
 #[cfg(target_os = "windows")]

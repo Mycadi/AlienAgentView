@@ -98,7 +98,13 @@ pub fn get_all_sessions() -> Vec<SessionInfo> {
         std::collections::HashSet::new();
 
     // Collect AAV window title statuses once (acode puts status in window title)
-    let window_statuses = crate::commands::get_aav_session_statuses();
+    let aav_statuses = crate::commands::get_aav_session_statuses();
+    // Index by session_id for direct lookup
+    let status_by_sid: std::collections::HashMap<&str, &str> = aav_statuses.iter()
+        .map(|w| (w.session_id.as_str(), w.status.as_str()))
+        .collect();
+    // Index by project for fallback lookup (window title project may have prefixes like "* " or ". ")
+    let status_by_project: Vec<&crate::commands::AavWindowStatus> = aav_statuses.iter().collect();
 
     // Build session info from deduplicated entries
     for (sf, path) in by_session_id.into_values() {
@@ -106,60 +112,48 @@ pub fn get_all_sessions() -> Vec<SessionInfo> {
         let project_name = extract_project_name(&sf.cwd);
         let dir_name = encode_path_to_dir_name(&sf.cwd);
 
-        let session_id = sf.session_id.clone();
+        // Session ID may change after /new — try direct match, then fallback by project
+        let (session_id, window_status) = if let Some(&s) = status_by_sid.get(sf.session_id.as_str()) {
+            (sf.session_id.clone(), Some(s))
+        } else if let Some(w) = status_by_project.iter().find(|w| w.project.contains(&project_name)) {
+            // Fallback: match by project name for unmatched sessions
+            (w.session_id.clone(), Some(w.status.as_str()))
+        } else {
+            (sf.session_id.clone(), None)
+        };
         all_known_session_ids.insert(session_id.clone());
+        all_known_session_ids.insert(sf.session_id.clone());
 
-        // Get conversation status
+        // Get conversation metadata (tokens, files, activity) from JSONL
+        // Try new session_id first, fall back to original
         let (
-            mut status,
+            _,
             last_activity,
             current_file,
             total_tokens,
             context_percentage,
             modified_files,
-            mut is_interacting,
-        ) = super::conversation::get_session_status(&dir_name, &session_id);
-
-        // Override status from AAV window title if available (acode sets it)
-        if let Some(title_status) = window_statuses.get(&session_id) {
-            match title_status.as_str() {
-                "working" => {
-                    status = SessionStatus::Working;
-                    is_interacting = true;
-                }
-                "done" => {
-                    // Alive process with "done" title → show in Working with gray dot
-                    status = SessionStatus::Working;
-                    is_interacting = false;
-                }
-                "error" => {
-                    status = SessionStatus::Error;
-                    is_interacting = false;
-                }
-                "input" => {
-                    status = SessionStatus::NeedsInput;
-                    is_interacting = false;
-                }
-                _ => {}
+            _,
+        ) = {
+            let result = super::conversation::get_session_status(&dir_name, &session_id);
+            if result.3 == 0 && session_id != sf.session_id {
+                // New session has no data yet, try original
+                super::conversation::get_session_status(&dir_name, &sf.session_id)
+            } else {
+                result
             }
-        }
-
-        // Only allow NeedsInput if the AAV title explicitly says "input"
-        if status == SessionStatus::NeedsInput
-            && !window_statuses
-                .get(&session_id)
-                .map_or(false, |s| s == "input")
-        {
-            status = SessionStatus::Working;
-            is_interacting = false;
-        }
-
-        let status = if !is_alive {
-            SessionStatus::Done
-        } else {
-            status
         };
-        let is_interacting = is_alive && is_interacting;
+
+        // Status is determined solely by AAV window title for alive sessions
+        let (status, is_interacting) = if !is_alive {
+            (SessionStatus::Done, false)
+        } else {
+            match window_status {
+                Some("working") => (SessionStatus::Working, true),
+                Some("input") => (SessionStatus::NeedsInput, false),
+                _ => (SessionStatus::Working, false),
+            }
+        };
 
         // Get current task
         let current_task = super::tasks::get_current_task(&session_id);
