@@ -77,7 +77,7 @@ export default function SessionCard({ session }: Props) {
 
       {session.status === 'needsinput' && (
         <div className="mt-[10px] ml-[28px] rounded-[4px] bg-[#211a0f] border border-[#332711] px-[11px] py-[7px] text-[12px] leading-[16px] text-[#d6b37d] truncate">
-          {session.lastActivity ?? sampleQuestion(title)}
+          {session.lastActivity ?? (isZh ? '等待输入...' : 'Waiting for input...')}
         </div>
       )}
     </article>
@@ -131,10 +131,4 @@ function sampleTitle(status: string) {
   if (status === 'working') return 'Implement auth middleware';
   if (status === 'needsinput') return 'Design system color decision';
   return 'Fix login page responsive issue';
-}
-
-function sampleQuestion(title: string) {
-  if (title.toLowerCase().includes('color')) return '选择主要色调方案？是否使用 Brand Blue #2563eb?';
-  if (title.toLowerCase().includes('review')) return '请 review 代码变更并提供反馈';
-  return '需要确认迁移计划？以及是否需要生产备份';
 }

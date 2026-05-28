@@ -103,21 +103,50 @@ pub fn get_all_sessions() -> Vec<SessionInfo> {
     let status_by_sid: std::collections::HashMap<&str, &str> = aav_statuses.iter()
         .map(|w| (w.session_id.as_str(), w.status.as_str()))
         .collect();
-    // Index by project for fallback lookup (window title project may have prefixes like "* " or ". ")
-    let status_by_project: Vec<&crate::commands::AavWindowStatus> = aav_statuses.iter().collect();
+
+    // Two-phase matching: first direct session_id match, then fallback by project.
+    // Each window can only be claimed once to prevent duplicates.
+    let session_entries: Vec<(SessionFile, PathBuf)> = by_session_id.into_values().collect();
+
+    // Phase 1: find which window session_ids are directly matched
+    let mut claimed_window_sids: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for (sf, _) in &session_entries {
+        if status_by_sid.contains_key(sf.session_id.as_str()) {
+            claimed_window_sids.insert(sf.session_id.clone());
+        }
+    }
+
+    // Phase 2: for sessions without direct match, try fallback by project (each window used at most once)
+    let mut fallback_map: std::collections::HashMap<String, (String, String)> = std::collections::HashMap::new(); // sf.session_id -> (window_session_id, window_status)
+    let mut fallback_claimed: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for (sf, _) in &session_entries {
+        let is_alive = sys.process(sysinfo::Pid::from_u32(sf.pid)).is_some();
+        if !is_alive || status_by_sid.contains_key(sf.session_id.as_str()) {
+            continue;
+        }
+        let project_name = extract_project_name(&sf.cwd);
+        // Find an unclaimed window matching this project
+        if let Some(w) = aav_statuses.iter().find(|w| {
+            w.project.contains(&project_name)
+                && !claimed_window_sids.contains(&w.session_id)
+                && !fallback_claimed.contains(&w.session_id)
+        }) {
+            fallback_map.insert(sf.session_id.clone(), (w.session_id.clone(), w.status.clone()));
+            fallback_claimed.insert(w.session_id.clone());
+        }
+    }
 
     // Build session info from deduplicated entries
-    for (sf, path) in by_session_id.into_values() {
+    for (sf, path) in session_entries {
         let is_alive = sys.process(sysinfo::Pid::from_u32(sf.pid)).is_some();
         let project_name = extract_project_name(&sf.cwd);
         let dir_name = encode_path_to_dir_name(&sf.cwd);
 
         // Session ID may change after /new — try direct match, then fallback by project
         let (session_id, window_status) = if let Some(&s) = status_by_sid.get(sf.session_id.as_str()) {
-            (sf.session_id.clone(), Some(s))
-        } else if let Some(w) = status_by_project.iter().find(|w| w.project.contains(&project_name)) {
-            // Fallback: match by project name for unmatched sessions
-            (w.session_id.clone(), Some(w.status.as_str()))
+            (sf.session_id.clone(), Some(s.to_string()))
+        } else if let Some((wsid, wstatus)) = fallback_map.remove(&sf.session_id) {
+            (wsid, Some(wstatus))
         } else {
             (sf.session_id.clone(), None)
         };
@@ -137,8 +166,11 @@ pub fn get_all_sessions() -> Vec<SessionInfo> {
         ) = {
             let result = super::conversation::get_session_status(&dir_name, &session_id);
             if result.3 == 0 && session_id != sf.session_id {
-                // New session has no data yet, try original
-                super::conversation::get_session_status(&dir_name, &sf.session_id)
+                // New session has no data yet, try original for tokens/files
+                // but clear last_activity since the new session has no activity yet
+                let mut fallback = super::conversation::get_session_status(&dir_name, &sf.session_id);
+                fallback.1 = None;
+                fallback
             } else {
                 result
             }
@@ -148,10 +180,12 @@ pub fn get_all_sessions() -> Vec<SessionInfo> {
         let (status, is_interacting) = if !is_alive {
             (SessionStatus::Done, false)
         } else {
-            match window_status {
+            match window_status.as_deref() {
                 Some("working") => (SessionStatus::Working, true),
                 Some("input") => (SessionStatus::NeedsInput, false),
-                _ => (SessionStatus::Working, false),
+                // Alive process but no matching window → treat as done
+                // (stale session file or window closed without process exit)
+                _ => (SessionStatus::Done, false),
             }
         };
 
