@@ -52,7 +52,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   refreshAll: async () => {
     set({ loading: true });
-    await get().fetchSessions();
+    await Promise.all([get().fetchSessions(), get().fetchStats()]);
     set({ loading: false });
   },
 

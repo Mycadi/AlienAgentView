@@ -32,33 +32,21 @@ function initSessionWatcher() {
     useSessionStore.getState().refreshAll();
   });
 
-  // Delayed stats refresh
-  window.setTimeout(() => {
-    const runStatsRefresh = async (incremental: boolean) => {
-      if (statsRefreshing) return;
-      statsRefreshing = true;
-      try {
-        if (incremental) {
-          await useSessionStore.getState().refreshStatsCacheIncremental();
-        } else {
-          await useSessionStore.getState().refreshStatsCache();
-        }
-      } catch (e) {
-        console.error(
-          incremental
-            ? 'Failed to refresh stats cache incrementally:'
-            : 'Failed to refresh stats cache:',
-          e
-        );
-      } finally {
-        statsRefreshing = false;
-      }
-    };
+  // Periodic incremental stats refresh (every 60s)
+  const runStatsRefresh = async () => {
+    if (statsRefreshing) return;
+    statsRefreshing = true;
+    try {
+      await useSessionStore.getState().refreshStatsCacheIncremental();
+    } catch (e) {
+      console.error('Failed to refresh stats cache incrementally:', e);
+    } finally {
+      statsRefreshing = false;
+    }
+  };
 
-    runStatsRefresh(false);
-    window.setInterval(() => {
-      runStatsRefresh(true);
-    }, 60_000);
+  window.setInterval(() => {
+    runStatsRefresh();
   }, 60_000);
 }
 
