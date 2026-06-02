@@ -119,6 +119,32 @@ export default function ProjectsPage() {
         >
           {isZh ? '添加项目' : 'Add Project'}
         </button>
+        {added.length > 0 && (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                for (const p of added) {
+                  invoke('open_terminal', { path: p, command: terminalCommand || 'acode' }).catch((e) => setError(String(e)));
+                }
+              }}
+              className="px-3 py-1.5 text-sm rounded border border-accent-orange/60 text-accent-orange hover:bg-accent-orange/10 transition-colors"
+            >
+              All Coding
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                for (const p of added) {
+                  invoke('open_folder', { path: p }).catch(() => {});
+                }
+              }}
+              className="px-3 py-1.5 text-sm rounded border border-border text-text-secondary hover:text-text-primary hover:border-border-glow transition-colors"
+            >
+              All File
+            </button>
+          </>
+        )}
       </div>
       {error && <div className="text-xs text-red-400 mb-2 max-w-5xl">{error}</div>}
       <div className="mb-6" />
