@@ -104,9 +104,9 @@ function ContributionGraph({ dailyActivity, isZh }: { dailyActivity: DailyActivi
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
   const { grid, totalContribs, monthLabels, maxVal, years } = useMemo(() => {
-    const lookup = new Map<string, number>();
+    const lookup = new Map<string, { messages: number; tokens: number }>();
     for (const d of dailyActivity) {
-      lookup.set(d.date, d.messageCount);
+      lookup.set(d.date, { messages: d.messageCount, tokens: d.tokens });
     }
 
     const today = new Date();
@@ -123,7 +123,7 @@ function ContributionGraph({ dailyActivity, isZh }: { dailyActivity: DailyActivi
     const offset = startDow === 0 ? 6 : startDow - 1;
     startDay.setDate(startDay.getDate() - offset);
 
-    const cells: { date: string; count: number; col: number; row: number }[] = [];
+    const cells: { date: string; count: number; tokens: number; col: number; row: number }[] = [];
     const cur = new Date(startDay);
     let col = 0;
     let maxVal = 0;
@@ -132,10 +132,12 @@ function ContributionGraph({ dailyActivity, isZh }: { dailyActivity: DailyActivi
     while (cur <= endDay) {
       const row = cur.getDay() === 0 ? 6 : cur.getDay() - 1;
       const key = fmt(cur);
-      const count = lookup.get(key) ?? 0;
+      const activity = lookup.get(key);
+      const count = activity?.messages ?? 0;
+      const tokens = activity?.tokens ?? 0;
       if (count > maxVal) maxVal = count;
       totalContribs += count;
-      cells.push({ date: key, count, col, row });
+      cells.push({ date: key, count, tokens, col, row });
       cur.setDate(cur.getDate() + 1);
       if (cur.getDay() === 1 || (cur.getDay() === 0 && cur <= endDay)) {
         // new week starts on Monday
@@ -197,7 +199,7 @@ function ContributionGraph({ dailyActivity, isZh }: { dailyActivity: DailyActivi
                 rx={2}
                 fill={colorForCount(c.count, maxVal)}
               >
-                <title>{`${c.date}: ${c.count}`}</title>
+                <title>{`${c.date}\nMessages: ${c.count}\nTokens: ${formatNum(c.tokens)}`}</title>
               </rect>
             ))}
             {/* Legend */}
