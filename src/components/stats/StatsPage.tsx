@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useClaudeSessions } from '../../hooks/useClaudeSessions';
 import { useSettingsStore } from '../../stores/settingsStore';
 import type { DailyActivity } from '../../types';
@@ -101,18 +101,24 @@ const DAY_EN = ['Mon','','Wed','','Fri','',''];
 const DAY_ZH = ['一','','三','','五','',''];
 
 function ContributionGraph({ dailyActivity, isZh }: { dailyActivity: DailyActivity[]; isZh: boolean }) {
-  const { grid, totalContribs, monthLabels, maxVal } = useMemo(() => {
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+
+  const { grid, totalContribs, monthLabels, maxVal, years } = useMemo(() => {
     const lookup = new Map<string, number>();
     for (const d of dailyActivity) {
       lookup.set(d.date, d.messageCount);
     }
 
     const today = new Date();
-    const endDay = new Date(today);
-    endDay.setHours(0, 0, 0, 0);
+    const endDay = selectedYear === null ? new Date(today) : new Date(selectedYear, 11, 31);
+    if (selectedYear === null) {
+      endDay.setHours(0, 0, 0, 0);
+    }
 
-    const startDay = new Date(endDay);
-    startDay.setDate(endDay.getDate() - 364);
+    const startDay = selectedYear === null ? new Date(endDay) : new Date(selectedYear, 0, 1);
+    if (selectedYear === null) {
+      startDay.setDate(endDay.getDate() - 364);
+    }
     const startDow = startDay.getDay();
     const offset = startDow === 0 ? 6 : startDow - 1;
     startDay.setDate(startDay.getDate() - offset);
@@ -148,8 +154,10 @@ function ContributionGraph({ dailyActivity, isZh }: { dailyActivity: DailyActivi
       }
     }
 
-    return { grid: cells, totalContribs, monthLabels, maxVal };
-  }, [dailyActivity, isZh]);
+    const years = [today.getFullYear(), today.getFullYear() - 1, today.getFullYear() - 2];
+
+    return { grid: cells, totalContribs, monthLabels, maxVal, years };
+  }, [dailyActivity, isZh, selectedYear]);
 
   const totalCols = (grid.length > 0 ? grid[grid.length - 1].col : 0) + 1;
   const leftPad = 32;
@@ -165,39 +173,53 @@ function ContributionGraph({ dailyActivity, isZh }: { dailyActivity: DailyActivi
           ? `过去一年共 ${totalContribs.toLocaleString()} 条消息`
           : `${totalContribs.toLocaleString()} messages in the last year`}
       </div>
-      <div className="overflow-x-auto">
-        <svg width={svgW} height={svgH} className="block">
-          {/* Month labels */}
-          {monthLabels.map((m, i) => (
-            <text key={i} x={leftPad + m.col * (CELL + GAP)} y={12} className="fill-text-muted" fontSize="10" fontFamily="inherit">
-              {m.label}
-            </text>
-          ))}
-          {/* Day labels */}
-          {dayLabels.map((d, i) => (
-            d ? <text key={i} x={0} y={20 + i * (CELL + GAP) + CELL - 2} className="fill-text-muted" fontSize="10" fontFamily="inherit">{d}</text> : null
-          ))}
-          {/* Cells */}
-          {grid.map((c, i) => (
-            <rect
-              key={i}
-              x={leftPad + c.col * (CELL + GAP)}
-              y={20 + c.row * (CELL + GAP)}
-              width={CELL}
-              height={CELL}
-              rx={2}
-              fill={colorForCount(c.count, maxVal)}
+      <div className="flex items-start gap-4">
+        <div className="overflow-x-auto flex-1">
+          <svg width={svgW} height={svgH} className="block">
+            {/* Month labels */}
+            {monthLabels.map((m, i) => (
+              <text key={i} x={leftPad + m.col * (CELL + GAP)} y={12} className="fill-text-muted" fontSize="10" fontFamily="inherit">
+                {m.label}
+              </text>
+            ))}
+            {/* Day labels */}
+            {dayLabels.map((d, i) => (
+              d ? <text key={i} x={0} y={20 + i * (CELL + GAP) + CELL - 2} className="fill-text-muted" fontSize="10" fontFamily="inherit">{d}</text> : null
+            ))}
+            {/* Cells */}
+            {grid.map((c, i) => (
+              <rect
+                key={i}
+                x={leftPad + c.col * (CELL + GAP)}
+                y={20 + c.row * (CELL + GAP)}
+                width={CELL}
+                height={CELL}
+                rx={2}
+                fill={colorForCount(c.count, maxVal)}
+              >
+                <title>{`${c.date}: ${c.count}`}</title>
+              </rect>
+            ))}
+            {/* Legend */}
+            <text x={svgW - 160} y={svgH - 6} className="fill-text-muted" fontSize="10" fontFamily="inherit">Less</text>
+            {COLORS.map((color, i) => (
+              <rect key={i} x={svgW - 130 + i * (CELL + GAP)} y={svgH - 18} width={CELL} height={CELL} rx={2} fill={color} />
+            ))}
+            <text x={svgW - 130 + COLORS.length * (CELL + GAP) + 4} y={svgH - 6} className="fill-text-muted" fontSize="10" fontFamily="inherit">More</text>
+          </svg>
+        </div>
+        <div className="flex flex-col gap-1 pt-2 shrink-0">
+          {years.map((y) => (
+            <button
+              key={y}
+              type="button"
+              onClick={() => setSelectedYear(selectedYear === y ? null : y)}
+              className={`px-3 py-1 rounded text-xs leading-6 text-left transition-colors ${selectedYear === y ? 'bg-accent text-white' : 'text-text-muted hover:bg-bg-hover hover:text-text-primary'}`}
             >
-              <title>{`${c.date}: ${c.count}`}</title>
-            </rect>
+              {y}
+            </button>
           ))}
-          {/* Legend */}
-          <text x={svgW - 160} y={svgH - 6} className="fill-text-muted" fontSize="10" fontFamily="inherit">Less</text>
-          {COLORS.map((color, i) => (
-            <rect key={i} x={svgW - 130 + i * (CELL + GAP)} y={svgH - 18} width={CELL} height={CELL} rx={2} fill={color} />
-          ))}
-          <text x={svgW - 130 + COLORS.length * (CELL + GAP) + 4} y={svgH - 6} className="fill-text-muted" fontSize="10" fontFamily="inherit">More</text>
-        </svg>
+        </div>
       </div>
     </div>
   );
