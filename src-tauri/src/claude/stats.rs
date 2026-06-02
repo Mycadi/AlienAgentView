@@ -425,7 +425,7 @@ fn aggregate_file_stats<'a>(files: impl Iterator<Item = &'a StatsOverview>) -> S
         overview.today_tokens = activity.tokens;
     }
 
-    overview.daily_activity = daily.into_values().rev().take(30).collect();
+    overview.daily_activity = daily.into_values().rev().take(365).collect();
     overview.daily_activity.reverse();
     overview
 }

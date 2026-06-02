@@ -58,4 +58,4 @@ export type ViewMode = 'kanban' | 'list' | 'grid';
 
 export type Language = 'zh-CN' | 'en';
 
-export type Page = 'agent-view' | 'projects' | 'sessions' | 'terminal' | 'settings';
+export type Page = 'agent-view' | 'projects' | 'sessions' | 'terminal' | 'stats' | 'settings';

@@ -9,6 +9,7 @@ import ProjectsPage from './components/projects/ProjectsPage';
 import SessionsPage from './components/sessions/SessionsPage';
 import TerminalPage from './components/terminal/TerminalPage';
 import SettingsPage from './components/settings/SettingsPage';
+import StatsPage from './components/stats/StatsPage';
 import RunTerminalPanel from './components/run-terminal/RunTerminalPanel';
 import { useSettingsStore } from './stores/settingsStore';
 import { initPtyListeners } from './stores/runTerminalStore';
@@ -33,6 +34,7 @@ export default function App() {
             {currentPage === 'projects' && <ProjectsPage />}
             {currentPage === 'sessions' && <SessionsPage />}
             {currentPage === 'terminal' && <TerminalPage />}
+            {currentPage === 'stats' && <StatsPage />}
             {currentPage === 'settings' && <SettingsPage />}
           </main>
           <RunTerminalPanel />

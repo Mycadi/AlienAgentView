@@ -8,7 +8,7 @@ import { useProjectsStore, normalizeProjectPath } from '../../stores/projectsSto
 import type { SessionInfo } from '../../types';
 
 export default function ProjectsPage() {
-  const { sessions, stats } = useClaudeSessions();
+  const { sessions } = useClaudeSessions();
   const { language, terminalCommand } = useSettingsStore();
   const { added, scripts, scriptDelays, urls, runningTags, load, add, remove, setScript, setUrl, runProject, stopProject } = useProjectsStore();
   const isZh = language === 'zh-CN';
@@ -295,42 +295,6 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      {/* Stats summary */}
-      {stats && (
-        <div className="mt-8 p-5 bg-bg-card border border-border rounded-xl max-w-5xl">
-          <div className="flex items-baseline justify-between mb-3">
-            <h3 className="text-sm font-medium text-text-primary">
-              {isZh ? '累计统计' : 'Lifetime Stats'}
-            </h3>
-            {stats.lastComputedDate && (
-              <span className="text-xs text-text-muted">
-                {isZh ? `数据截至 ${stats.lastComputedDate}` : `As of ${stats.lastComputedDate}`}
-              </span>
-            )}
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-xs">
-            <StatItem label={isZh ? '总会话' : 'Total Sessions'} value={stats.totalSessions} />
-            <StatItem label={isZh ? '总消息' : 'Total Messages'} value={stats.totalMessages} />
-            <StatItem
-              label={isZh ? '输入 Tokens' : 'Input Tokens'}
-              value={formatNum(stats.totalInputTokens)}
-            />
-            <StatItem
-              label={isZh ? '输出 Tokens' : 'Output Tokens'}
-              value={formatNum(stats.totalOutputTokens)}
-            />
-            <StatItem
-              label={isZh ? '缓存读取' : 'Cache Read'}
-              value={formatNum(stats.totalCacheReadTokens)}
-            />
-            <StatItem
-              label={isZh ? '缓存创建' : 'Cache Create'}
-              value={formatNum(stats.totalCacheCreationTokens)}
-            />
-          </div>
-        </div>
-      )}
-
       {scriptTarget && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
@@ -439,20 +403,4 @@ export default function ProjectsPage() {
       )}
     </div>
   );
-}
-
-function StatItem({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div>
-      <div className="text-text-muted mb-1">{label}</div>
-      <div className="text-lg font-bold text-text-primary">{value}</div>
-    </div>
-  );
-}
-
-function formatNum(n: number): string {
-  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toString();
 }

@@ -7,6 +7,7 @@ const navItems: { id: Page; labels: { zh: string; en: string }; icon: ReactNode 
   { id: 'projects', labels: { zh: '项目', en: 'Projects' }, icon: <IconFolder /> },
   { id: 'sessions', labels: { zh: '会话', en: 'Sessions' }, icon: <IconClock /> },
   { id: 'terminal', labels: { zh: '终端', en: 'Terminal' }, icon: <IconTerminal /> },
+  { id: 'stats', labels: { zh: '统计', en: 'Stats' }, icon: <IconChart /> },
   { id: 'settings', labels: { zh: '设置', en: 'Settings' }, icon: <IconGear /> },
 ];
 
@@ -74,3 +75,4 @@ function IconFolder() { return <svg className="w-[18px] h-[18px]" viewBox="0 0 2
 function IconClock() { return <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3 2"/></svg>; }
 function IconGear() { return <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z"/><path d="M19 12a7.5 7.5 0 0 0-.1-1.2l2-1.5-2-3.4-2.4 1a7.2 7.2 0 0 0-2-1.1L14.2 3h-4.4l-.3 2.8a7.2 7.2 0 0 0-2 1.1l-2.4-1-2 3.4 2 1.5A7.5 7.5 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.4-1a7.2 7.2 0 0 0 2 1.1l.3 2.8h4.4l.3-2.8a7.2 7.2 0 0 0 2-1.1l2.4 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/></svg>; }
 function IconTerminal() { return <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8l4 4-4 4"/><path d="M13 16h4"/></svg>; }
+function IconChart() { return <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="13" width="3" height="7" rx="0.5"/><rect x="10.5" y="8" width="3" height="12" rx="0.5"/><rect x="17" y="4" width="3" height="16" rx="0.5"/></svg>; }
