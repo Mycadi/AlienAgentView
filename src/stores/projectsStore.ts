@@ -62,7 +62,7 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
     const key = normalize(path);
     const scripts = get().scripts[key] ?? '';
     const delaySeconds = get().scriptDelays[key] ?? 0;
-    const commands = scripts.split('\n').map((l) => l.trim()).filter(Boolean);
+    const commands = scripts.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
     if (commands.length === 0) return;
 
     const termStore = useRunTerminalStore.getState();
