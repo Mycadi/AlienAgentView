@@ -5,7 +5,7 @@ import { useSettingsStore } from '../../stores/settingsStore';
 
 export default function StatusBar() {
   const { sessions, workingSessions, needsInputSessions, doneSessions, stats } = useClaudeSessions();
-  const { language } = useSettingsStore();
+  const { language, setPage } = useSettingsStore();
   const isZh = language === 'zh-CN';
   const [todayTokens, setTodayTokens] = useState<number>(0);
 
@@ -50,7 +50,11 @@ export default function StatusBar() {
           <div className="text-[20px] leading-[24px] font-bold text-text-primary">{tokenDisplay}</div>
         </div>
         {spark.length > 0 && (
-          <div className="h-[34px] flex items-end gap-[4px]">
+          <button
+            type="button"
+            onClick={() => setPage('stats')}
+            className="h-[34px] flex items-end gap-[4px] cursor-pointer"
+          >
             {spark.map((v, i) => {
               const ratio = sparkMax > 0 ? v / sparkMax : 0;
               const height = Math.max(2, Math.round(ratio * 34));
@@ -62,7 +66,7 @@ export default function StatusBar() {
                 />
               );
             })}
-          </div>
+          </button>
         )}
       </div>
     </footer>
