@@ -180,22 +180,22 @@ pub fn run() {
                                 }
                             }
                         }
-                        TrayIconEvent::Leave { position, .. } => {
-                            // 检查鼠标是否正移向弹窗区域，是则不隐藏
+                        TrayIconEvent::Leave { .. } => {
                             let app = tray.app_handle().clone();
-                            let mouse_x = position.x;
-                            let mouse_y = position.y;
                             std::thread::spawn(move || {
-                                std::thread::sleep(std::time::Duration::from_millis(200));
+                                std::thread::sleep(std::time::Duration::from_millis(300));
                                 if let Some(popup) = app.get_webview_window("tray-popup") {
                                     if let (Ok(visible), Ok(pos), Ok(size)) =
                                         (popup.is_visible(), popup.outer_position(), popup.outer_size())
                                     {
                                         if visible {
-                                            let in_popup = mouse_x >= pos.x as f64
-                                                && mouse_x <= (pos.x + size.width as i32) as f64
-                                                && mouse_y >= pos.y as f64
-                                                && mouse_y <= (pos.y + size.height as i32) as f64;
+                                            // 获取实时鼠标位置
+                                            let mut point = windows::Win32::Foundation::POINT { x: 0, y: 0 };
+                                            let _ = unsafe { windows::Win32::UI::WindowsAndMessaging::GetCursorPos(&mut point) };
+                                            let in_popup = point.x >= pos.x
+                                                && point.x <= pos.x + size.width as i32
+                                                && point.y >= pos.y
+                                                && point.y <= pos.y + size.height as i32;
                                             if !in_popup {
                                                 let _ = popup.hide();
                                             }
