@@ -23,7 +23,7 @@
         "label": "tray-popup",
         "title": "",
         "url": "/",
-        "width": 360,
+        "width": 280,
         "height": 56,
         "resizable": false,
         "decorations": false,
