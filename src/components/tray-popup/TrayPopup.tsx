@@ -90,7 +90,7 @@ export default function TrayPopup() {
     >
       <div className="mx-2 my-2 rounded-xl overflow-hidden glass-panel border border-border/60">
         {/* 标题栏 */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-border/40 select-none">
+        <div className="flex items-center justify-between pl-2 pr-4 py-2 border-b border-border/40 select-none">
           <div className="flex items-center gap-2 min-w-0">
             <img src="/logo.png" alt="" className="w-4 h-4 shrink-0" draggable={false} />
             <span className="text-xs font-medium text-text-secondary truncate">AlienAgentView</span>
@@ -113,7 +113,7 @@ export default function TrayPopup() {
             <div
               key={session.sessionId}
               onClick={() => handleClick(session)}
-              className="flex items-center gap-3 px-4 py-2 hover:bg-bg-card-hover cursor-pointer transition-colors border-b border-border/20 last:border-b-0"
+              className="flex items-center gap-3 pl-3 pr-4 py-2 hover:bg-bg-card-hover cursor-pointer transition-colors border-b border-border/20 last:border-b-0"
             >
               <div className="w-2 h-2 rounded-full bg-status-needs-input shrink-0" />
               <div className="flex-1 min-w-0">
