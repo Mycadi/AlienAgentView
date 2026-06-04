@@ -166,6 +166,12 @@ pub fn run() {
                         } => {
                             let app = tray.app_handle();
                             let state = app.state::<tray_flash::TrayFlashState>();
+                            // 缓存托盘图标矩形位置，用于 Leave 时判断虚假事件
+                            {
+                                let pos: tauri::PhysicalPosition<f64> = rect.position.to_physical(1.0);
+                                let size: tauri::PhysicalSize<f64> = rect.size.to_physical(1.0);
+                                state.set_tray_rect(Some((pos.x as i32, pos.y as i32, size.width as i32, size.height as i32)));
+                            }
                             if state.is_flashing() {
                                 if let Some(popup) = app.get_webview_window("tray-popup") {
                                     // 定位弹窗到托盘图标上方
@@ -181,7 +187,23 @@ pub fn run() {
                             }
                         }
                         TrayIconEvent::Leave { .. } => {
-                            let app = tray.app_handle().clone();
+                            let app = tray.app_handle();
+                            let state = app.state::<tray_flash::TrayFlashState>();
+                            if state.is_flashing() {
+                                // 闪烁期间图标切换会产生虚假 Leave 事件
+                                // 通过鼠标位置判断：鼠标仍在图标区域内则忽略
+                                let tray_rect = state.get_tray_rect();
+                                let mut point = windows::Win32::Foundation::POINT { x: 0, y: 0 };
+                                let _ = unsafe { windows::Win32::UI::WindowsAndMessaging::GetCursorPos(&mut point) };
+                                let in_tray = tray_rect.map_or(false, |(rx, ry, rw, rh)| {
+                                    point.x >= rx && point.x <= rx + rw && point.y >= ry && point.y <= ry + rh
+                                });
+                                if in_tray {
+                                    // 鼠标仍在图标上，是虚假 Leave，忽略
+                                    return;
+                                }
+                            }
+                            let app = app.clone();
                             std::thread::spawn(move || {
                                 std::thread::sleep(std::time::Duration::from_millis(300));
                                 if let Some(popup) = app.get_webview_window("tray-popup") {
@@ -189,7 +211,6 @@ pub fn run() {
                                         (popup.is_visible(), popup.outer_position(), popup.outer_size())
                                     {
                                         if visible {
-                                            // 获取实时鼠标位置
                                             let mut point = windows::Win32::Foundation::POINT { x: 0, y: 0 };
                                             let _ = unsafe { windows::Win32::UI::WindowsAndMessaging::GetCursorPos(&mut point) };
                                             let in_popup = point.x >= pos.x

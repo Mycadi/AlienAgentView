@@ -1,6 +1,7 @@
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
+    Mutex,
 };
 use tauri::{image::Image, AppHandle, Manager};
 use tokio::time::{interval, Duration};
@@ -8,17 +9,28 @@ use tokio::time::{interval, Duration};
 /// 托盘图标闪烁管理器
 pub struct TrayFlashState {
     flashing: Arc<AtomicBool>,
+    /// 缓存托盘图标物理矩形 (x, y, width, height)，用于闪烁时判断虚假 Leave 事件
+    tray_rect: Arc<Mutex<Option<(i32, i32, i32, i32)>>>,
 }
 
 impl TrayFlashState {
     pub fn new() -> Self {
         Self {
             flashing: Arc::new(AtomicBool::new(false)),
+            tray_rect: Arc::new(Mutex::new(None)),
         }
     }
 
     pub fn is_flashing(&self) -> bool {
         self.flashing.load(Ordering::SeqCst)
+    }
+
+    pub fn set_tray_rect(&self, rect: Option<(i32, i32, i32, i32)>) {
+        *self.tray_rect.lock().unwrap() = rect;
+    }
+
+    pub fn get_tray_rect(&self) -> Option<(i32, i32, i32, i32)> {
+        self.tray_rect.lock().unwrap().clone()
     }
 }
 
