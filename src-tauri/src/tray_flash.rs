@@ -22,9 +22,13 @@ impl TrayFlashState {
     }
 }
 
-/// 1x1 透明 RGBA 图标
+/// 从文件加载空状态图标（k32x32.png 为透明/占位图标，避免程序生成黑块）
 fn transparent_icon() -> Image<'static> {
-    Image::new_owned(vec![0u8; 4], 1, 1)
+    let img = image::load_from_memory(include_bytes!("../icons/k32x32.png"))
+        .expect("failed to load k32x32.png")
+        .to_rgba8();
+    let (w, h) = img.dimensions();
+    Image::new_owned(img.into_raw(), w, h)
 }
 
 #[tauri::command]
