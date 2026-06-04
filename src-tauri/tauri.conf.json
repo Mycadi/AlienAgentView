@@ -18,6 +18,20 @@
         "resizable": true,
         "decorations": false,
         "transparent": false
+      },
+      {
+        "label": "tray-popup",
+        "title": "",
+        "url": "/",
+        "width": 360,
+        "height": 320,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "visible": false,
+        "focus": false
       }
     ]
   },
