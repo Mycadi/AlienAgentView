@@ -20,7 +20,7 @@ export default function TrayPopup() {
   useEffect(() => {
     requestAnimationFrame(() => {
       if (!contentRef.current) return;
-      const height = Math.ceil(contentRef.current.getBoundingClientRect().height) + 24;
+      const height = Math.ceil(contentRef.current.getBoundingClientRect().height) + 16;
       getCurrentWindow().setSize(new LogicalSize(240, height));
     });
   }, [sessions]);
