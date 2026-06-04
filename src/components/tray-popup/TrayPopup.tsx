@@ -21,7 +21,7 @@ export default function TrayPopup() {
     requestAnimationFrame(() => {
       if (!contentRef.current) return;
       const height = contentRef.current.scrollHeight;
-      getCurrentWindow().setSize(new LogicalSize(280, height));
+      getCurrentWindow().setSize(new LogicalSize(260, height));
     });
   }, [sessions]);
 
@@ -32,6 +32,7 @@ export default function TrayPopup() {
         setSessions(
           all
             .filter((s) => s.status === 'needsinput')
+            .sort((a, b) => (a.projectName || a.cwd).localeCompare(b.projectName || b.cwd, 'en'))
             .map((s) => ({
               sessionId: s.sessionId,
               projectName: s.projectName,
@@ -89,8 +90,11 @@ export default function TrayPopup() {
     >
       <div className="mx-2 my-2 rounded-xl overflow-hidden glass-panel border border-border/60">
         {/* 标题栏 */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-border/40">
-          <span className="text-xs font-medium text-text-secondary">AlienAgentView</span>
+        <div className="flex items-center justify-between px-4 py-2 border-b border-border/40 select-none">
+          <div className="flex items-center gap-2 min-w-0">
+            <img src="/logo.png" alt="" className="w-4 h-4 shrink-0" draggable={false} />
+            <span className="text-xs font-medium text-text-secondary truncate">AlienAgentView</span>
+          </div>
           <button
             onClick={handleStopFlash}
             className="text-xs text-text-muted hover:text-accent-orange transition-colors cursor-pointer"
