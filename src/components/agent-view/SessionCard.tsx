@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import type { SessionInfo } from '../../types';
@@ -7,33 +7,14 @@ interface Props { session: SessionInfo; }
 
 export default function SessionCard({ session }: Props) {
   const { focusSessionWindow } = useSessionStore();
-  const { language, mutedSessions, addMutedSession } = useSettingsStore();
+  const { language, mutedSessions, addMutedSession, removeMutedSession } = useSettingsStore();
   const [showModifiedFiles, setShowModifiedFiles] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
   const isZh = language === 'zh-CN';
   const isMuted = mutedSessions.includes(session.sessionId);
   const elapsed = formatElapsed(session.elapsedSeconds, isZh);
   const file = session.currentFile ? shortenPath(session.currentFile) : shortenPath(session.cwd);
   const title = session.projectName || (session.currentTask ?? sampleTitle(session.status));
   const dotStyle = getDotStyle(session.status);
-
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    if (session.status !== 'needsinput') return;
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY });
-  }, [session.status]);
-
-  useEffect(() => {
-    if (!contextMenu) return;
-    const handler = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setContextMenu(null);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [contextMenu]);
 
   return (
     <article
@@ -45,7 +26,6 @@ export default function SessionCard({ session }: Props) {
         }
         focusSessionWindow(session.sessionId, session.pid);
       }}
-      onContextMenu={handleContextMenu}
     >
       <div className="flex items-start justify-between gap-[12px]">
         <div className="flex items-start gap-[11px] min-w-0">
@@ -102,29 +82,21 @@ export default function SessionCard({ session }: Props) {
         </div>
       )}
 
-      {isMuted && (
-        <div className="mt-[6px] ml-[28px] text-[11px] text-text-muted">
-          {isZh ? '🔇 已屏蔽闪烁通知' : '🔇 Flash muted'}
-        </div>
-      )}
-
-      {contextMenu && (
-        <div
-          ref={menuRef}
-          className="fixed z-50 bg-[#1e2130] border border-[#31384a] rounded-lg shadow-xl py-1 min-w-[140px]"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-        >
-          <button
-            className="w-full px-3 py-1.5 text-left text-[13px] text-text-primary hover:bg-[#2a2e42] transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
+      {session.status === 'needsinput' && (
+        <button
+          className="absolute top-[8px] right-[8px] w-[22px] h-[22px] flex items-center justify-center rounded-md text-[13px] hover:bg-[#2a2e42] transition-colors"
+          title={isMuted ? (isZh ? '取消屏蔽闪烁通知' : 'Unmute flash') : (isZh ? '屏蔽闪烁通知' : 'Mute flash')}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isMuted) {
+              removeMutedSession(session.sessionId);
+            } else {
               addMutedSession(session.sessionId);
-              setContextMenu(null);
-            }}
-          >
-            {isZh ? '屏蔽闪烁通知' : 'Mute flash'}
-          </button>
-        </div>
+            }
+          }}
+        >
+          {isMuted ? '🔇' : '🔔'}
+        </button>
       )}
     </article>
   );
