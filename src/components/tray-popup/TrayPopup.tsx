@@ -34,17 +34,27 @@ export default function TrayPopup() {
           invoke<{ mutedSessions?: string[] }>('get_app_settings'),
         ]);
         const muted = settings.mutedSessions ?? [];
-        setSessions(
-          all
-            .filter((s) => s.status === 'needsinput' && !muted.includes(s.sessionId))
-            .sort((a, b) => (a.projectName || a.cwd).localeCompare(b.projectName || b.cwd, 'en'))
-            .map((s) => ({
-              sessionId: s.sessionId,
-              projectName: s.projectName,
-              cwd: s.cwd,
-              pid: s.pid,
-            }))
-        );
+        const needsInput = all
+          .filter((s) => s.status === 'needsinput' && !muted.includes(s.sessionId))
+          .sort((a, b) => (a.projectName || a.cwd).localeCompare(b.projectName || b.cwd, 'en'))
+          .map((s) => ({
+            sessionId: s.sessionId,
+            projectName: s.projectName,
+            cwd: s.cwd,
+            pid: s.pid,
+          }));
+
+        // 清除不再处于 needsinput 的已读标记，使其再次进入时恢复未读
+        const currentIds = new Set(needsInput.map((s) => s.sessionId));
+        setAcknowledged((prev) => {
+          const next = new Set<string>();
+          for (const id of prev) {
+            if (currentIds.has(id)) next.add(id);
+          }
+          return next.size === prev.size ? prev : next;
+        });
+
+        setSessions(needsInput);
       } catch {
         // ignore
       }
