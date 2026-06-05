@@ -8,6 +8,7 @@ interface AppSettings {
   refreshInterval: number;
   terminalCommand: string;
   claudeDir: string;
+  mutedSessions: string[];
 }
 
 interface SettingsState {
@@ -18,6 +19,7 @@ interface SettingsState {
   claudeDir: string;
   terminalCommand: string;
   inputFilterWords: string[];
+  mutedSessions: string[];
 
   setPage: (page: Page) => void;
   setViewMode: (mode: ViewMode) => void;
@@ -27,6 +29,8 @@ interface SettingsState {
   setClaudeDir: (dir: string) => Promise<void>;
   loadAppSettings: () => Promise<void>;
   setInputFilterWords: (words: string[]) => Promise<void>;
+  addMutedSession: (sessionId: string) => Promise<void>;
+  removeMutedSession: (sessionId: string) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -37,6 +41,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   claudeDir: '~/.claude',
   terminalCommand: 'acode',
   inputFilterWords: ['确认', '继续', '改吧'],
+  mutedSessions: [],
 
   setPage: (page) => set({ currentPage: page }),
   setViewMode: (mode) => set({ viewMode: mode }),
@@ -65,6 +70,7 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       const settings = await invoke<AppSettings>('get_app_settings');
       set({
         inputFilterWords: settings.inputFilterWords ?? [],
+        mutedSessions: settings.mutedSessions ?? [],
         language: (settings.language as Language) ?? 'zh-CN',
         refreshInterval: settings.refreshInterval ?? 3,
         terminalCommand: settings.terminalCommand || 'acode',
@@ -77,5 +83,18 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   setInputFilterWords: async (words) => {
     const settings = await invoke<AppSettings>('update_app_settings', { inputFilterWords: words });
     set({ inputFilterWords: settings.inputFilterWords ?? [] });
+  },
+  addMutedSession: async (sessionId) => {
+    const current = useSettingsStore.getState().mutedSessions;
+    if (current.includes(sessionId)) return;
+    const next = [...current, sessionId];
+    const settings = await invoke<AppSettings>('update_app_settings', { mutedSessions: next });
+    set({ mutedSessions: settings.mutedSessions ?? [] });
+  },
+  removeMutedSession: async (sessionId) => {
+    const current = useSettingsStore.getState().mutedSessions;
+    const next = current.filter((id) => id !== sessionId);
+    const settings = await invoke<AppSettings>('update_app_settings', { mutedSessions: next });
+    set({ mutedSessions: settings.mutedSessions ?? [] });
   },
 }));

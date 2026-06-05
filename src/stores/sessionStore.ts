@@ -103,13 +103,19 @@ export const useSessionStore = create<SessionState>((set, get) => ({
           console.log(`[notify] session ${session.sessionId} status: ${prev} → ${session.status}`);
         }
         if (prev === 'working' && session.status === 'needsinput') {
-          console.log(`[notify] triggering notification for: ${session.projectName}`);
-          notifyNeedsInput(session);
+          const muted = useSettingsStore.getState().mutedSessions;
+          if (muted.includes(session.sessionId)) {
+            console.log(`[notify] session ${session.sessionId} is muted, skipping notification`);
+          } else {
+            console.log(`[notify] triggering notification for: ${session.projectName}`);
+            notifyNeedsInput(session);
+          }
         }
       }
 
-      // 没有 needsinput 的 session 时自动停止闪烁
-      const hasNeedsInput = sessions.some((s) => s.status === 'needsinput');
+      // 没有未屏蔽的 needsinput session 时自动停止闪烁
+      const muted = useSettingsStore.getState().mutedSessions;
+      const hasNeedsInput = sessions.some((s) => s.status === 'needsinput' && !muted.includes(s.sessionId));
       if (!hasNeedsInput) {
         invoke('stop_tray_flash').catch(() => {});
       }

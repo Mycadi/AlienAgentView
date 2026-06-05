@@ -20,6 +20,8 @@ export default function SettingsPage() {
     inputFilterWords,
     loadAppSettings,
     setInputFilterWords,
+    mutedSessions,
+    removeMutedSession,
   } = useSettingsStore();
   const isZh = language === 'zh-CN';
   const [localTerminalCommand, setLocalTerminalCommand] = useState(terminalCommand);
@@ -189,6 +191,35 @@ export default function SettingsPage() {
               <span className="text-xs text-red-400">{filterWordsError}</span>
             )}
           </div>
+        </div>
+
+        {/* Muted sessions */}
+        <div className="bg-bg-card border border-border rounded-xl p-5">
+          <h3 className="text-sm font-medium text-text-primary mb-3">
+            {isZh ? '已屏蔽会话' : 'Muted Sessions'}
+          </h3>
+          <p className="text-xs text-text-muted mb-3">
+            {isZh ? '这些会话进入"需要输入"时不触发托盘闪烁和通知。' : 'These sessions won\'t trigger tray flash or notification when they need input.'}
+          </p>
+          {mutedSessions.length === 0 ? (
+            <div className="text-xs text-text-muted">
+              {isZh ? '暂无屏蔽会话' : 'No muted sessions'}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {mutedSessions.map((sid) => (
+                <div key={sid} className="flex items-center justify-between gap-2 px-3 py-2 bg-bg-primary border border-border rounded-lg">
+                  <span className="text-sm text-text-primary font-mono truncate">{sid}</span>
+                  <button
+                    onClick={() => removeMutedSession(sid)}
+                    className="shrink-0 text-xs text-text-muted hover:text-red-400 transition-colors"
+                  >
+                    {isZh ? '取消屏蔽' : 'Unmute'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* About */}

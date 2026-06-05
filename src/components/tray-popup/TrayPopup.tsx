@@ -28,10 +28,14 @@ export default function TrayPopup() {
   useEffect(() => {
     const fetchSessions = async () => {
       try {
-        const all = await invoke<SessionInfo[]>('get_sessions');
+        const [all, settings] = await Promise.all([
+          invoke<SessionInfo[]>('get_sessions'),
+          invoke<{ mutedSessions?: string[] }>('get_app_settings'),
+        ]);
+        const muted = settings.mutedSessions ?? [];
         setSessions(
           all
-            .filter((s) => s.status === 'needsinput')
+            .filter((s) => s.status === 'needsinput' && !muted.includes(s.sessionId))
             .sort((a, b) => (a.projectName || a.cwd).localeCompare(b.projectName || b.cwd, 'en'))
             .map((s) => ({
               sessionId: s.sessionId,

@@ -15,6 +15,8 @@ pub struct AppSettings {
     pub terminal_command: String,
     #[serde(default = "default_claude_dir")]
     pub claude_dir: String,
+    #[serde(default)]
+    pub muted_sessions: Vec<String>,
 }
 
 impl Default for AppSettings {
@@ -25,6 +27,7 @@ impl Default for AppSettings {
             refresh_interval: default_refresh_interval(),
             terminal_command: default_terminal_command(),
             claude_dir: default_claude_dir(),
+            muted_sessions: Vec::new(),
         }
     }
 }
@@ -119,6 +122,7 @@ pub fn update_app_settings(
     terminal_command: Option<String>,
     claude_dir: Option<String>,
     input_filter_words: Option<Vec<String>>,
+    muted_sessions: Option<Vec<String>>,
 ) -> Result<AppSettings, String> {
     let mut data = load();
     if let Some(v) = language {
@@ -135,6 +139,9 @@ pub fn update_app_settings(
     }
     if let Some(v) = input_filter_words {
         data.input_filter_words = normalize_words(v);
+    }
+    if let Some(v) = muted_sessions {
+        data.muted_sessions = v;
     }
     save(&data)?;
     Ok(data)

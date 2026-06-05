@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSessionStore } from '../../stores/sessionStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import type { SessionInfo } from '../../types';
@@ -7,17 +7,37 @@ interface Props { session: SessionInfo; }
 
 export default function SessionCard({ session }: Props) {
   const { focusSessionWindow } = useSessionStore();
-  const { language } = useSettingsStore();
+  const { language, mutedSessions, addMutedSession } = useSettingsStore();
   const [showModifiedFiles, setShowModifiedFiles] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const isZh = language === 'zh-CN';
+  const isMuted = mutedSessions.includes(session.sessionId);
   const elapsed = formatElapsed(session.elapsedSeconds, isZh);
   const file = session.currentFile ? shortenPath(session.currentFile) : shortenPath(session.cwd);
   const title = session.projectName || (session.currentTask ?? sampleTitle(session.status));
   const dotStyle = getDotStyle(session.status);
 
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    if (session.status !== 'needsinput') return;
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, [session.status]);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [contextMenu]);
+
   return (
     <article
-      className="card-shadow rounded-[9px] border border-[#202532] bg-[#181b22] px-[16px] py-[13px] hover:border-[#31384a] transition-colors cursor-pointer"
+      className="card-shadow rounded-[9px] border border-[#202532] bg-[#181b22] px-[16px] py-[13px] hover:border-[#31384a] transition-colors cursor-pointer relative"
       onClick={() => {
         if (session.status === 'done') {
           setShowModifiedFiles((value) => !value);
@@ -25,6 +45,7 @@ export default function SessionCard({ session }: Props) {
         }
         focusSessionWindow(session.sessionId, session.pid);
       }}
+      onContextMenu={handleContextMenu}
     >
       <div className="flex items-start justify-between gap-[12px]">
         <div className="flex items-start gap-[11px] min-w-0">
@@ -78,6 +99,31 @@ export default function SessionCard({ session }: Props) {
       {session.status === 'needsinput' && (
         <div className="mt-[10px] ml-[28px] rounded-[4px] bg-[#211a0f] border border-[#332711] px-[11px] py-[7px] text-[12px] leading-[16px] text-[#d6b37d] truncate">
           {session.lastActivity ?? (isZh ? '等待输入...' : 'Waiting for input...')}
+        </div>
+      )}
+
+      {isMuted && (
+        <div className="mt-[6px] ml-[28px] text-[11px] text-text-muted">
+          {isZh ? '🔇 已屏蔽闪烁通知' : '🔇 Flash muted'}
+        </div>
+      )}
+
+      {contextMenu && (
+        <div
+          ref={menuRef}
+          className="fixed z-50 bg-[#1e2130] border border-[#31384a] rounded-lg shadow-xl py-1 min-w-[140px]"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <button
+            className="w-full px-3 py-1.5 text-left text-[13px] text-text-primary hover:bg-[#2a2e42] transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              addMutedSession(session.sessionId);
+              setContextMenu(null);
+            }}
+          >
+            {isZh ? '屏蔽闪烁通知' : 'Mute flash'}
+          </button>
         </div>
       )}
     </article>
