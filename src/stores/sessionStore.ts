@@ -37,11 +37,7 @@ function initTrayClickListener() {
   if (trayListenerInit) return;
   trayListenerInit = true;
   listen('tray-click-while-flashing', () => {
-    useSettingsStore.getState().setPage('terminal');
-  });
-  listen('navigate-to-terminal', () => {
-    useSettingsStore.getState().setPage('terminal');
-    // 显示并聚焦主窗口
+    // 仅显示并聚焦主窗口，不切换页面
     getCurrentWindow().show();
     getCurrentWindow().setFocus();
   });
@@ -69,12 +65,6 @@ async function notifyNeedsInput(session: SessionInfo) {
   const tooltip = `${session.projectName || session.cwd} - 等待输入`;
   invoke('start_tray_flash', { tooltip }).catch(() => {});
 
-  // 窗口隐藏时预切换到终端页，用户点通知唤起窗口即可看到
-  const mainWindow = getCurrentWindow();
-  const visible = await mainWindow.isVisible();
-  if (!visible) {
-    useSettingsStore.getState().setPage('terminal');
-  }
 }
 
 interface SessionState {

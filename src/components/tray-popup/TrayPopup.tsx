@@ -79,7 +79,6 @@ export default function TrayPopup() {
     const { emit } = await import('@tauri-apps/api/event');
     // 通知主窗口标记已读
     await emit('session-acknowledged', { sessionId: session.sessionId });
-    await emit('navigate-to-terminal', { sessionId: session.sessionId });
 
     try {
       await invoke('focus_window_by_session_id', { sessionId: session.sessionId });
