@@ -14,6 +14,7 @@ interface TrayPopupSession {
 
 export default function TrayPopup() {
   const [sessions, setSessions] = useState<TrayPopupSession[]>([]);
+  const [acknowledged, setAcknowledged] = useState<Set<string>>(new Set());
   const contentRef = useRef<HTMLDivElement>(null);
 
   // 测量真实 DOM 高度来设置窗口大小
@@ -61,7 +62,13 @@ export default function TrayPopup() {
   }, []);
 
   const handleClick = async (session: TrayPopupSession) => {
+    // 标记为已读
+    const nextAck = new Set(acknowledged).add(session.sessionId);
+    setAcknowledged(nextAck);
+
     const { emit } = await import('@tauri-apps/api/event');
+    // 通知主窗口标记已读
+    await emit('session-acknowledged', { sessionId: session.sessionId });
     await emit('navigate-to-terminal', { sessionId: session.sessionId });
 
     try {
@@ -72,7 +79,11 @@ export default function TrayPopup() {
       }
     }
 
-    await invoke('stop_tray_flash').catch(() => {});
+    // 所有 session 都已读后停止闪烁
+    const allAcknowledged = sessions.every((s) => nextAck.has(s.sessionId));
+    if (allAcknowledged) {
+      await invoke('stop_tray_flash').catch(() => {});
+    }
     const popup = getCurrentWindow();
     await popup.hide();
   };
@@ -113,21 +124,32 @@ export default function TrayPopup() {
             暂无等待输入的会话
           </div>
         ) : (
-          sessions.map((session) => (
-            <div
-              key={session.sessionId}
-              onClick={() => handleClick(session)}
-              className="flex items-center gap-3 pl-3 pr-4 py-2 hover:bg-bg-card-hover cursor-pointer transition-colors border-b border-border/20 last:border-b-0"
-            >
-              <div className="w-2 h-2 rounded-full bg-status-needs-input shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm text-text-primary truncate">
-                  {session.projectName || session.cwd}
+          [...sessions]
+            .sort((a, b) => {
+              const aAck = acknowledged.has(a.sessionId) ? 1 : 0;
+              const bAck = acknowledged.has(b.sessionId) ? 1 : 0;
+              return aAck - bAck;
+            })
+            .map((session) => {
+              const isAck = acknowledged.has(session.sessionId);
+              return (
+                <div
+                  key={session.sessionId}
+                  onClick={() => handleClick(session)}
+                  className={`flex items-center gap-3 pl-3 pr-4 py-2 hover:bg-bg-card-hover cursor-pointer transition-colors border-b border-border/20 last:border-b-0 ${isAck ? 'opacity-40' : ''}`}
+                >
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${isAck ? 'bg-text-muted' : 'bg-status-needs-input'}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-sm truncate ${isAck ? 'text-text-muted' : 'text-text-primary'}`}>
+                      {session.projectName || session.cwd}
+                    </div>
+                    <div className="text-xs text-text-muted mt-0.5">
+                      {isAck ? '已查看' : '等待输入'}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-xs text-text-muted mt-0.5">等待输入</div>
-              </div>
-            </div>
-          ))
+              );
+            })
         )}
       </div>
     </div>

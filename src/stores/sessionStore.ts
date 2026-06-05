@@ -13,6 +13,9 @@ import { useSettingsStore } from './settingsStore';
 // 缓存上一次各 session 的状态，用于检测状态变化
 let prevStatusMap: Map<string, SessionStatus> = new Map();
 
+// 已读（用户已点击处理过）的 needsinput session，纯内存态
+const acknowledgedSessions = new Set<string>();
+
 // 初始化时请求通知权限
 let notificationReady: Promise<boolean> | null = null;
 function ensureNotificationPermission(): Promise<boolean> {
@@ -41,6 +44,9 @@ function initTrayClickListener() {
     // 显示并聚焦主窗口
     getCurrentWindow().show();
     getCurrentWindow().setFocus();
+  });
+  listen<{ sessionId: string }>('session-acknowledged', (event) => {
+    acknowledgedSessions.add(event.payload.sessionId);
   });
 }
 
@@ -102,6 +108,10 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         if (prev !== undefined && prev !== session.status) {
           console.log(`[notify] session ${session.sessionId} status: ${prev} → ${session.status}`);
         }
+        // session 离开 needsinput 时清除已读标记，下次再进入 needsinput 时重新通知
+        if (prev === 'needsinput' && session.status !== 'needsinput') {
+          acknowledgedSessions.delete(session.sessionId);
+        }
         if (prev === 'working' && session.status === 'needsinput') {
           const muted = useSettingsStore.getState().mutedSessions;
           if (muted.includes(session.sessionId)) {
@@ -113,10 +123,12 @@ export const useSessionStore = create<SessionState>((set, get) => ({
         }
       }
 
-      // 没有未屏蔽的 needsinput session 时自动停止闪烁
+      // 没有未屏蔽且未已读的 needsinput session 时自动停止闪烁
       const muted = useSettingsStore.getState().mutedSessions;
-      const hasNeedsInput = sessions.some((s) => s.status === 'needsinput' && !muted.includes(s.sessionId));
-      if (!hasNeedsInput) {
+      const hasUnreadNeedsInput = sessions.some(
+        (s) => s.status === 'needsinput' && !muted.includes(s.sessionId) && !acknowledgedSessions.has(s.sessionId)
+      );
+      if (!hasUnreadNeedsInput) {
         invoke('stop_tray_flash').catch(() => {});
       }
 
@@ -170,3 +182,13 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }
   },
 }));
+
+/** 标记 session 为已读 */
+export function acknowledgeSession(sessionId: string) {
+  acknowledgedSessions.add(sessionId);
+}
+
+/** 检查 session 是否已读 */
+export function isSessionAcknowledged(sessionId: string): boolean {
+  return acknowledgedSessions.has(sessionId);
+}
