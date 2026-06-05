@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { invoke } from '@tauri-apps/api/core';
@@ -14,6 +14,37 @@ export default function TerminalInstance({ ptyId, visible }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+
+  // 关闭右键菜单
+  const closeMenu = useCallback(() => setCtxMenu(null), []);
+
+  // 全局点击关闭菜单
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const handler = () => setCtxMenu(null);
+    window.addEventListener('mousedown', handler);
+    return () => window.removeEventListener('mousedown', handler);
+  }, [ctxMenu]);
+
+  const handleCopy = useCallback(() => {
+    const sel = termRef.current?.getSelection();
+    if (sel) navigator.clipboard.writeText(sel);
+    closeMenu();
+  }, [closeMenu]);
+
+  const handlePaste = useCallback(async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        invoke('pty_write', {
+          id: ptyId,
+          data: Array.from(new TextEncoder().encode(text)),
+        }).catch(() => {});
+      }
+    } catch { /* clipboard access denied */ }
+    closeMenu();
+  }, [ptyId, closeMenu]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -92,11 +123,40 @@ export default function TerminalInstance({ ptyId, visible }: Props) {
     }
   }, [visible]);
 
+  const onContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCtxMenu({ x: e.clientX, y: e.clientY });
+  }, []);
+
   return (
     <div
       ref={containerRef}
       className="absolute inset-0"
       style={{ visibility: visible ? 'visible' : 'hidden' }}
-    />
+      onContextMenu={onContextMenu}
+    >
+      {ctxMenu && (
+        <div
+          className="fixed z-50 min-w-[120px] rounded border border-[#3e4452] bg-[#1e222a] py-1 text-sm text-[#abb2bf] shadow-lg"
+          style={{ left: ctxMenu.x, top: ctxMenu.y }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <button
+            className="w-full px-3 py-1.5 text-left hover:bg-[#2c313a] disabled:opacity-40"
+            onClick={handleCopy}
+            disabled={!termRef.current?.getSelection()}
+          >
+            复制
+          </button>
+          <button
+            className="w-full px-3 py-1.5 text-left hover:bg-[#2c313a]"
+            onClick={handlePaste}
+          >
+            粘贴
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
