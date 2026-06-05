@@ -53,7 +53,7 @@ export default function SessionCard({ session }: Props) {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-[12px] shrink-0">
+        <div className="flex items-center gap-[12px] shrink-0 pr-[6px]">
           {elapsed && <span className="text-[12px] leading-[16px] text-text-muted">{elapsed}</span>}
           {dotStyle && (
             <span
