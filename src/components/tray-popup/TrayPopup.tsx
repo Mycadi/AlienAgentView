@@ -21,7 +21,7 @@ export default function TrayPopup() {
   useEffect(() => {
     requestAnimationFrame(() => {
       if (!contentRef.current) return;
-      const height = Math.ceil(contentRef.current.getBoundingClientRect().height) + 16;
+      const height = Math.ceil(contentRef.current.getBoundingClientRect().height);
       getCurrentWindow().setSize(new LogicalSize(240, height));
     });
   }, [sessions]);
@@ -112,7 +112,7 @@ export default function TrayPopup() {
         await popup.hide();
       }}
     >
-      <div className="mx-2 my-2 rounded-xl overflow-hidden glass-panel border border-border/60">
+      <div className="overflow-hidden glass-panel">
         {/* 标题栏 */}
         <div className="flex items-center justify-between pl-2 pr-4 py-2 border-b border-border/40 select-none">
           <div className="flex items-center gap-2 min-w-0">
