@@ -3,6 +3,7 @@ use std::sync::{
     Arc,
     Mutex,
 };
+use std::time::Instant;
 use tauri::{image::Image, AppHandle, Manager};
 use tokio::time::{interval, Duration};
 
@@ -11,6 +12,8 @@ pub struct TrayFlashState {
     flashing: Arc<AtomicBool>,
     /// 缓存托盘图标物理矩形 (x, y, width, height)，用于闪烁时判断虚假 Leave 事件
     tray_rect: Arc<Mutex<Option<(i32, i32, i32, i32)>>>,
+    /// 弹窗应显示标志 + 上次 Enter 的时间戳，用于过滤虚假 Leave
+    popup_intent: Arc<Mutex<Option<Instant>>>,
 }
 
 impl TrayFlashState {
@@ -18,6 +21,7 @@ impl TrayFlashState {
         Self {
             flashing: Arc::new(AtomicBool::new(false)),
             tray_rect: Arc::new(Mutex::new(None)),
+            popup_intent: Arc::new(Mutex::new(None)),
         }
     }
 
@@ -31,6 +35,21 @@ impl TrayFlashState {
 
     pub fn get_tray_rect(&self) -> Option<(i32, i32, i32, i32)> {
         self.tray_rect.lock().unwrap().clone()
+    }
+
+    /// 标记弹窗意图（Enter 时调用），记录时间戳
+    pub fn mark_popup_enter(&self) {
+        *self.popup_intent.lock().unwrap() = Some(Instant::now());
+    }
+
+    /// 清除弹窗意图（真实 Leave 确认后调用）
+    pub fn clear_popup_intent(&self) {
+        *self.popup_intent.lock().unwrap() = None;
+    }
+
+    /// 获取上次 Enter 的时间戳
+    pub fn popup_enter_time(&self) -> Option<Instant> {
+        *self.popup_intent.lock().unwrap()
     }
 }
 

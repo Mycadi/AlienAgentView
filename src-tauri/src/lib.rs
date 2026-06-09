@@ -174,15 +174,21 @@ pub fn run() {
                             }
                             if state.is_flashing() {
                                 if let Some(popup) = app.get_webview_window("tray-popup") {
-                                    // 定位弹窗到托盘图标上方
-                                    let pos: tauri::PhysicalPosition<f64> = rect.position.to_physical(1.0);
-                                    let size: tauri::PhysicalSize<f64> = rect.size.to_physical(1.0);
-                                    if let Ok(popup_size) = popup.outer_size() {
-                                        let x: f64 = pos.x + size.width / 2.0 - popup_size.width as f64 / 2.0;
-                                        let y: f64 = pos.y - popup_size.height as f64 - 8.0;
-                                        let _ = popup.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+                                    // 弹窗已经可见时，只刷新时间戳，不重复 show（避免闪烁时反复触发重绘导致乱闪）
+                                    if popup.is_visible().unwrap_or(false) {
+                                        state.mark_popup_enter();
+                                    } else {
+                                        state.mark_popup_enter();
+                                        // 定位弹窗到托盘图标上方
+                                        let pos: tauri::PhysicalPosition<f64> = rect.position.to_physical(1.0);
+                                        let size: tauri::PhysicalSize<f64> = rect.size.to_physical(1.0);
+                                        if let Ok(popup_size) = popup.outer_size() {
+                                            let x: f64 = pos.x + size.width / 2.0 - popup_size.width as f64 / 2.0;
+                                            let y: f64 = pos.y - popup_size.height as f64 - 8.0;
+                                            let _ = popup.set_position(tauri::PhysicalPosition::new(x as i32, y as i32));
+                                        }
+                                        let _ = popup.show();
                                     }
-                                    let _ = popup.show();
                                 }
                             }
                         }
@@ -202,10 +208,23 @@ pub fn run() {
                                     // 鼠标仍在图标上，是虚假 Leave，忽略
                                     return;
                                 }
+                                // 距上次 Enter 不足 600ms，可能是图标切换引发的虚假 Leave，忽略
+                                if let Some(enter_time) = state.popup_enter_time() {
+                                    if enter_time.elapsed() < std::time::Duration::from_millis(600) {
+                                        return;
+                                    }
+                                }
                             }
                             let app = app.clone();
                             std::thread::spawn(move || {
                                 std::thread::sleep(std::time::Duration::from_millis(300));
+                                let state = app.state::<tray_flash::TrayFlashState>();
+                                // 延迟期间若又触发了新的 Enter，放弃本次隐藏
+                                if let Some(enter_time) = state.popup_enter_time() {
+                                    if enter_time.elapsed() < std::time::Duration::from_millis(300) {
+                                        return;
+                                    }
+                                }
                                 if let Some(popup) = app.get_webview_window("tray-popup") {
                                     if let (Ok(visible), Ok(pos), Ok(size)) =
                                         (popup.is_visible(), popup.outer_position(), popup.outer_size())
@@ -213,11 +232,19 @@ pub fn run() {
                                         if visible {
                                             let mut point = windows::Win32::Foundation::POINT { x: 0, y: 0 };
                                             let _ = unsafe { windows::Win32::UI::WindowsAndMessaging::GetCursorPos(&mut point) };
-                                            let in_popup = point.x >= pos.x
-                                                && point.x <= pos.x + size.width as i32
-                                                && point.y >= pos.y
-                                                && point.y <= pos.y + size.height as i32;
-                                            if !in_popup {
+                                            // 扩大检测区域：包含弹窗与托盘图标之间的间隙
+                                            let margin = 12;
+                                            let in_popup = point.x >= pos.x - margin
+                                                && point.x <= pos.x + size.width as i32 + margin
+                                                && point.y >= pos.y - margin
+                                                && point.y <= pos.y + size.height as i32 + margin;
+                                            // 也检查鼠标是否仍在托盘图标区域
+                                            let tray_rect = state.get_tray_rect();
+                                            let in_tray = tray_rect.map_or(false, |(rx, ry, rw, rh)| {
+                                                point.x >= rx && point.x <= rx + rw && point.y >= ry && point.y <= ry + rh
+                                            });
+                                            if !in_popup && !in_tray {
+                                                state.clear_popup_intent();
                                                 let _ = popup.hide();
                                             }
                                         }
