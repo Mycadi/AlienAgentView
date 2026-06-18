@@ -215,13 +215,18 @@ pub fn run() {
                                     }
                                 }
                             }
+                            // 限流：同一时刻最多一个 Leave 延迟线程
+                            if !state.try_acquire_leave() {
+                                return;
+                            }
                             let app = app.clone();
                             std::thread::spawn(move || {
                                 std::thread::sleep(std::time::Duration::from_millis(300));
                                 let state = app.state::<tray_flash::TrayFlashState>();
                                 // 延迟期间若又触发了新的 Enter，放弃本次隐藏
                                 if let Some(enter_time) = state.popup_enter_time() {
-                                    if enter_time.elapsed() < std::time::Duration::from_millis(300) {
+                                    if enter_time.elapsed() < std::time::Duration::from_millis(400) {
+                                        state.release_leave();
                                         return;
                                     }
                                 }
@@ -250,6 +255,7 @@ pub fn run() {
                                         }
                                     }
                                 }
+                                state.release_leave();
                             });
                         }
                         _ => {}

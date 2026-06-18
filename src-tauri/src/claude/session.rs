@@ -72,7 +72,7 @@ fn extract_project_name(cwd: &str) -> String {
 pub fn get_all_sessions() -> Vec<SessionInfo> {
     let sessions_dir = get_sessions_dir();
     let mut sessions = Vec::new();
-    let mut sys = SYSTEM_CACHE.lock().unwrap();
+    let mut sys = SYSTEM_CACHE.lock().unwrap_or_else(|e| e.into_inner());
     sys.refresh_processes_specifics(ProcessesToUpdate::All, true, ProcessRefreshKind::nothing());
 
     // Collect all session files, deduplicate by session_id (not by cwd)

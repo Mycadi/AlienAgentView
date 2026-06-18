@@ -383,7 +383,7 @@ fn release_window_impl(thumbnail_id: isize) -> Result<(), String> {
     let unregister_result = unsafe { DwmUnregisterThumbnail(thumbnail_id) }
         .map_err(|e| format!("DwmUnregisterThumbnail failed: {e}"));
 
-    let mut entries = THUMBNAIL_ENTRIES.lock().unwrap();
+    let mut entries = THUMBNAIL_ENTRIES.lock().unwrap_or_else(|e| e.into_inner());
     entries.retain(|e| e.thumbnail_id != thumbnail_id);
 
     unregister_result
@@ -402,7 +402,7 @@ pub fn release_all_windows() -> Result<(), String> {
 
 #[cfg(target_os = "windows")]
 fn release_all_impl() -> Result<(), String> {
-    let entries = THUMBNAIL_ENTRIES.lock().unwrap();
+    let entries = THUMBNAIL_ENTRIES.lock().unwrap_or_else(|e| e.into_inner());
     let ids: Vec<isize> = entries.iter().map(|e| e.thumbnail_id).collect();
     drop(entries);
 
@@ -410,7 +410,7 @@ fn release_all_impl() -> Result<(), String> {
         let _ = release_window_impl(id);
     }
 
-    THUMBNAIL_ENTRIES.lock().unwrap().clear();
+    THUMBNAIL_ENTRIES.lock().unwrap_or_else(|e| e.into_inner()).clear();
     Ok(())
 }
 
@@ -427,7 +427,7 @@ pub fn get_captured_windows() -> Vec<CapturedWindow> {
 
 #[cfg(target_os = "windows")]
 fn get_captured_impl() -> Vec<CapturedWindow> {
-    let entries = THUMBNAIL_ENTRIES.lock().unwrap();
+    let entries = THUMBNAIL_ENTRIES.lock().unwrap_or_else(|e| e.into_inner());
     entries
         .iter()
         .map(|e| CapturedWindow {
@@ -569,7 +569,7 @@ fn collect_aav_windows() -> Vec<AavWindow> {
     static RESULTS: std::sync::LazyLock<StdMutex<Vec<(isize, String, u32)>>> =
         std::sync::LazyLock::new(|| StdMutex::new(Vec::new()));
 
-    RESULTS.lock().unwrap().clear();
+    RESULTS.lock().unwrap_or_else(|e| e.into_inner()).clear();
 
     unsafe extern "system" fn enum_cb(hwnd: HWND, _lparam: LPARAM) -> BOOL {
         if !unsafe { IsWindowVisible(hwnd) }.as_bool() {
@@ -588,7 +588,7 @@ fn collect_aav_windows() -> Vec<AavWindow> {
         if title.contains("AAV:") {
             let mut pid = 0u32;
             unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid)) };
-            RESULTS.lock().unwrap().push((hwnd.0 as isize, title, pid));
+            RESULTS.lock().unwrap_or_else(|e| e.into_inner()).push((hwnd.0 as isize, title, pid));
         }
 
         true.into()
@@ -596,7 +596,7 @@ fn collect_aav_windows() -> Vec<AavWindow> {
 
     unsafe { EnumWindows(Some(enum_cb), LPARAM(0)) }.ok();
 
-    let raw = RESULTS.lock().unwrap().clone();
+    let raw = RESULTS.lock().unwrap_or_else(|e| e.into_inner()).clone();
     raw.into_iter()
         .filter_map(|(hwnd_val, title, pid)| {
             let (session_id, project, status) = parse_aav_window_title(&title)?;
@@ -686,7 +686,7 @@ fn capture_by_session_ids_impl(app: tauri::AppHandle, session_ids: Vec<String>) 
             title: aav.title.clone(),
             project_name: project_name.clone(),
         };
-        THUMBNAIL_ENTRIES.lock().unwrap().push(entry);
+        THUMBNAIL_ENTRIES.lock().unwrap_or_else(|e| e.into_inner()).push(entry);
 
         captured.push(CapturedWindow {
             hwnd: source_hwnd,
