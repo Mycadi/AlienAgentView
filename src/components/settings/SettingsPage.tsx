@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSettingsStore } from '../../stores/settingsStore';
-import type { Language } from '../../types';
+import { useChatStore } from '../../stores/chatStore';
+import type { ChatRole, Language } from '../../types';
 
 const languages: { id: Language; label: string }[] = [
   { id: 'zh-CN', label: '简体中文' },
@@ -222,6 +223,9 @@ export default function SettingsPage() {
           )}
         </div>
 
+        {/* Chat model & roles */}
+        <ChatSettingsSection isZh={isZh} />
+
         {/* About */}
         <div className="bg-bg-card border border-border rounded-xl p-5">
           <h3 className="text-sm font-medium text-text-primary mb-3">{isZh ? '关于' : 'About'}</h3>
@@ -233,5 +237,176 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function uid(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function ChatSettingsSection({ isZh }: { isZh: boolean }) {
+  const { config, loadConfig, updateModel, saveRoles } = useChatStore();
+
+  const [baseUrl, setBaseUrl] = useState(config.model.baseUrl);
+  const [apiKey, setApiKey] = useState(config.model.apiKey);
+  const [model, setModel] = useState(config.model.model);
+  const [roles, setRoles] = useState<ChatRole[]>(config.roles);
+  const [defaultRoleId, setDefaultRoleId] = useState(config.defaultRoleId);
+  const [modelSaved, setModelSaved] = useState(false);
+  const [rolesSaved, setRolesSaved] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadConfig();
+  }, [loadConfig]);
+
+  useEffect(() => {
+    setBaseUrl(config.model.baseUrl);
+    setApiKey(config.model.apiKey);
+    setModel(config.model.model);
+    setRoles(config.roles);
+    setDefaultRoleId(config.defaultRoleId);
+  }, [config]);
+
+  const saveModel = async () => {
+    await updateModel({ baseUrl: baseUrl.trim(), apiKey: apiKey.trim(), model: model.trim() });
+    setModelSaved(true);
+    setTimeout(() => setModelSaved(false), 1500);
+  };
+
+  const addRole = () => {
+    const id = uid();
+    setRoles((prev) => [...prev, { id, name: isZh ? '新角色' : 'New Role', systemPrompt: '' }]);
+    setEditingId(id);
+  };
+
+  const updateRole = (id: string, patch: Partial<ChatRole>) => {
+    setRoles((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  };
+
+  const removeRole = (id: string) => {
+    setRoles((prev) => prev.filter((r) => r.id !== id));
+    if (defaultRoleId === id) setDefaultRoleId('');
+  };
+
+  const saveRoleList = async () => {
+    await saveRoles(roles, defaultRoleId);
+    setRolesSaved(true);
+    setTimeout(() => setRolesSaved(false), 1500);
+  };
+
+  const inputCls =
+    'w-full px-3 py-2 bg-bg-primary border border-border rounded-lg text-sm text-text-primary font-mono focus:outline-none focus:border-border-glow transition-colors';
+
+  return (
+    <>
+      {/* Chat model */}
+      <div className="bg-bg-card border border-border rounded-xl p-5">
+        <h3 className="text-sm font-medium text-text-primary mb-3">
+          {isZh ? '对话模型' : 'Chat Model'}
+        </h3>
+        <p className="text-xs text-text-muted mb-3">
+          {isZh ? 'OpenAI 兼容接口。请求由本地后端代理发出。' : 'OpenAI-compatible API. Requests are proxied by the local backend.'}
+        </p>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs text-text-muted mb-1">Base URL</label>
+            <input type="text" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com" className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs text-text-muted mb-1">API Key</label>
+            <input type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="sk-..." className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs text-text-muted mb-1">{isZh ? '模型名称' : 'Model'}</label>
+            <input type="text" value={model} onChange={(e) => setModel(e.target.value)} placeholder="gpt-4o-mini" className={inputCls} />
+          </div>
+        </div>
+        <div className="mt-3 flex items-center gap-3">
+          <button
+            onClick={saveModel}
+            className="px-3 py-1.5 bg-accent-orange text-bg-primary rounded-lg text-sm font-medium hover:bg-accent-orange/90 transition-colors"
+          >
+            {isZh ? '保存' : 'Save'}
+          </button>
+          {modelSaved && <span className="text-xs text-green-400">{isZh ? '已保存' : 'Saved'}</span>}
+        </div>
+      </div>
+
+      {/* Chat roles */}
+      <div className="bg-bg-card border border-border rounded-xl p-5">
+        <h3 className="text-sm font-medium text-text-primary mb-3">
+          {isZh ? '对话角色' : 'Chat Roles'}
+        </h3>
+        <p className="text-xs text-text-muted mb-3">
+          {isZh ? '每个角色是一段系统提示词。设为默认后，打开对话默认使用该角色。' : 'Each role is a system prompt. The default role is used when opening Chat.'}
+        </p>
+        <div className="space-y-3">
+          {roles.length === 0 ? (
+            <div className="text-xs text-text-muted">{isZh ? '暂无角色' : 'No roles'}</div>
+          ) : (
+            roles.map((r) => (
+              <div key={r.id} className="border border-border rounded-lg p-3 bg-bg-primary/50 space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={r.name}
+                    onChange={(e) => updateRole(r.id, { name: e.target.value })}
+                    placeholder={isZh ? '角色名称' : 'Role name'}
+                    className="flex-1 px-2 py-1.5 bg-bg-primary border border-border rounded-md text-sm text-text-primary focus:outline-none focus:border-border-glow"
+                  />
+                  <label className="flex items-center gap-1.5 text-xs text-text-secondary cursor-pointer">
+                    <input
+                      type="radio"
+                      name="defaultRole"
+                      checked={defaultRoleId === r.id}
+                      onChange={() => setDefaultRoleId(r.id)}
+                      className="accent-accent-orange"
+                    />
+                    {isZh ? '默认' : 'Default'}
+                  </label>
+                  <button
+                    onClick={() => setEditingId((id) => (id === r.id ? null : r.id))}
+                    className="shrink-0 text-xs text-text-muted hover:text-text-primary transition-colors"
+                  >
+                    {editingId === r.id ? (isZh ? '收起' : 'Collapse') : (isZh ? '编辑' : 'Edit')}
+                  </button>
+                  <button
+                    onClick={() => removeRole(r.id)}
+                    className="shrink-0 text-xs text-text-muted hover:text-red-400 transition-colors"
+                  >
+                    {isZh ? '删除' : 'Delete'}
+                  </button>
+                </div>
+                {editingId === r.id && (
+                  <textarea
+                    value={r.systemPrompt}
+                    onChange={(e) => updateRole(r.id, { systemPrompt: e.target.value })}
+                    rows={3}
+                    placeholder={isZh ? '系统提示词' : 'System prompt'}
+                    className="w-full px-2 py-1.5 bg-bg-primary border border-border rounded-md text-sm text-text-primary focus:outline-none focus:border-border-glow resize-y"
+                  />
+                )}
+              </div>
+            ))
+          )}
+        </div>
+        <div className="mt-3 flex items-center gap-3">
+          <button
+            onClick={addRole}
+            className="px-3 py-1.5 border border-border text-text-secondary rounded-lg text-sm hover:text-text-primary hover:border-border-glow transition-colors"
+          >
+            {isZh ? '+ 添加角色' : '+ Add Role'}
+          </button>
+          <button
+            onClick={saveRoleList}
+            className="px-3 py-1.5 bg-accent-orange text-bg-primary rounded-lg text-sm font-medium hover:bg-accent-orange/90 transition-colors"
+          >
+            {isZh ? '保存角色' : 'Save Roles'}
+          </button>
+          {rolesSaved && <span className="text-xs text-green-400">{isZh ? '已保存' : 'Saved'}</span>}
+        </div>
+      </div>
+    </>
   );
 }

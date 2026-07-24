@@ -27,3 +27,5 @@ raw-window-handle = "0.6"
 portable-pty = "0.9"
 tauri-plugin-notification = "2"
 image = { version = "0.25", default-features = false, features = ["png"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+futures-util = "0.3"

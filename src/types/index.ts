@@ -58,4 +58,38 @@ export type ViewMode = 'kanban' | 'list' | 'grid';
 
 export type Language = 'zh-CN' | 'en';
 
-export type Page = 'agent-view' | 'projects' | 'sessions' | 'terminal' | 'stats' | 'settings';
+export type Page = 'agent-view' | 'projects' | 'sessions' | 'terminal' | 'chat' | 'stats' | 'settings';
+
+// Chat types matching Rust backend
+export interface ChatModelConfig {
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+}
+
+export interface ChatRole {
+  id: string;
+  name: string;
+  systemPrompt: string;
+}
+
+export interface ChatConfig {
+  model: ChatModelConfig;
+  roles: ChatRole[];
+  defaultRoleId: string;
+}
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp?: number | null;
+}
+
+export interface ChatConversation {
+  id: string;
+  title: string;
+  roleId: string;
+  messages: ChatMessage[];
+  createdAt: number;
+  updatedAt: number;
+}

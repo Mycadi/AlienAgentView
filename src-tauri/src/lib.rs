@@ -1,4 +1,5 @@
 mod app_settings;
+mod chat;
 mod claude;
 mod commands;
 mod projects;
@@ -79,6 +80,12 @@ pub fn run() {
             app_settings::get_app_settings,
             app_settings::set_input_filter_words,
             app_settings::update_app_settings,
+            chat::get_chat_config,
+            chat::update_chat_config,
+            chat::get_chat_conversations,
+            chat::save_chat_conversation,
+            chat::delete_chat_conversation,
+            chat::chat_send,
             projects::list_user_projects,
             projects::add_user_project,
             projects::remove_user_project,

@@ -10,9 +10,11 @@ import SessionsPage from './components/sessions/SessionsPage';
 import TerminalPage from './components/terminal/TerminalPage';
 import SettingsPage from './components/settings/SettingsPage';
 import StatsPage from './components/stats/StatsPage';
+import ChatPage from './components/chat/ChatPage';
 import RunTerminalPanel from './components/run-terminal/RunTerminalPanel';
 import { useSettingsStore } from './stores/settingsStore';
 import { initPtyListeners } from './stores/runTerminalStore';
+import { initChatListeners } from './stores/chatStore';
 
 export default function App() {
   const { currentPage, loadAppSettings } = useSettingsStore();
@@ -20,6 +22,7 @@ export default function App() {
   useEffect(() => {
     loadAppSettings();
     initPtyListeners();
+    initChatListeners();
   }, [loadAppSettings]);
 
   return (
@@ -34,6 +37,7 @@ export default function App() {
             {currentPage === 'projects' && <ProjectsPage />}
             {currentPage === 'sessions' && <SessionsPage />}
             {currentPage === 'terminal' && <TerminalPage />}
+            {currentPage === 'chat' && <ChatPage />}
             {currentPage === 'stats' && <StatsPage />}
             {currentPage === 'settings' && <SettingsPage />}
           </main>
