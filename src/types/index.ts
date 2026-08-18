@@ -75,6 +75,8 @@ export interface ChatRole {
 
 export interface ChatConfig {
   model: ChatModelConfig;
+  /** Empty fields fall back to `model`. */
+  visionModel: ChatModelConfig;
   roles: ChatRole[];
   defaultRoleId: string;
 }
@@ -82,6 +84,8 @@ export interface ChatConfig {
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  /** Base64 data URLs of attached images. */
+  images?: string[];
   timestamp?: number | null;
 }
 

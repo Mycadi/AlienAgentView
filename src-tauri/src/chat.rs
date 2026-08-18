@@ -35,6 +35,11 @@ fn default_model() -> String {
     "gpt-4o-mini".to_string()
 }
 
+/// All-empty config, so unset vision fields fall back to the chat model.
+fn empty_model_config() -> ChatModelConfig {
+    ChatModelConfig { base_url: String::new(), api_key: String::new(), model: String::new() }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatRole {
@@ -44,15 +49,29 @@ pub struct ChatRole {
     pub system_prompt: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatConfig {
     #[serde(default)]
     pub model: ChatModelConfig,
+    /// Optional. Empty fields fall back to `model`.
+    #[serde(default = "empty_model_config")]
+    pub vision_model: ChatModelConfig,
     #[serde(default)]
     pub roles: Vec<ChatRole>,
     #[serde(default)]
     pub default_role_id: String,
+}
+
+impl Default for ChatConfig {
+    fn default() -> Self {
+        Self {
+            model: ChatModelConfig::default(),
+            vision_model: empty_model_config(),
+            roles: Vec::new(),
+            default_role_id: String::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,6 +79,9 @@ pub struct ChatConfig {
 pub struct ChatMessage {
     pub role: String,
     pub content: String,
+    /// Base64 data URLs of attached images.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub images: Vec<String>,
     #[serde(default)]
     pub timestamp: Option<i64>,
 }
@@ -124,12 +146,16 @@ pub fn get_chat_config() -> ChatConfig {
 #[tauri::command]
 pub fn update_chat_config(
     model: Option<ChatModelConfig>,
+    vision_model: Option<ChatModelConfig>,
     roles: Option<Vec<ChatRole>>,
     default_role_id: Option<String>,
 ) -> Result<ChatConfig, String> {
     let mut data = load_config();
     if let Some(v) = model {
         data.model = v;
+    }
+    if let Some(v) = vision_model {
+        data.vision_model = v;
     }
     if let Some(v) = roles {
         data.roles = v;
@@ -168,6 +194,38 @@ pub fn delete_chat_conversation(id: String) -> Result<(), String> {
 
 // ---------------- Streaming send ----------------
 
+/// Vision config with each empty field falling back to the chat model.
+fn resolve_vision(config: &ChatConfig) -> ChatModelConfig {
+    let v = &config.vision_model;
+    let m = &config.model;
+    let pick = |a: &str, b: &str| {
+        if a.trim().is_empty() { b.trim().to_string() } else { a.trim().to_string() }
+    };
+    ChatModelConfig {
+        base_url: pick(&v.base_url, &m.base_url),
+        api_key: pick(&v.api_key, &m.api_key),
+        model: pick(&v.model, &m.model),
+    }
+}
+
+/// OpenAI message content: plain string, or multimodal array when images exist.
+fn message_content(m: &ChatMessage) -> serde_json::Value {
+    if m.images.is_empty() {
+        return serde_json::Value::String(m.content.clone());
+    }
+    let mut parts: Vec<serde_json::Value> = Vec::new();
+    if !m.content.trim().is_empty() {
+        parts.push(serde_json::json!({ "type": "text", "text": m.content }));
+    }
+    for url in &m.images {
+        parts.push(serde_json::json!({
+            "type": "image_url",
+            "image_url": { "url": url },
+        }));
+    }
+    serde_json::Value::Array(parts)
+}
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct StreamPayload {
@@ -191,7 +249,8 @@ pub async fn chat_send(
     messages: Vec<ChatMessage>,
 ) -> Result<(), String> {
     let config = load_config();
-    let model = config.model.clone();
+    let has_images = messages.iter().any(|m| !m.images.is_empty());
+    let model = if has_images { resolve_vision(&config) } else { config.model.clone() };
 
     if model.api_key.trim().is_empty() {
         return Err("未配置 API Key，请在设置中填写".to_string());
@@ -210,7 +269,7 @@ pub async fn chat_send(
     for m in &messages {
         body_messages.push(serde_json::json!({
             "role": m.role,
-            "content": m.content,
+            "content": message_content(m),
         }));
     }
 

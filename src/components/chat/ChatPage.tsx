@@ -22,7 +22,11 @@ export default function ChatPage() {
   } = useChatStore();
 
   const [input, setInput] = useState('');
+  const [pending, setPending] = useState<string[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -40,14 +44,39 @@ export default function ChatPage() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [current?.messages, streaming]);
 
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPreview(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [preview]);
+
+  /** Read image files into base64 data URLs and queue them for sending. */
+  const addFiles = (files: FileList | File[] | null) => {
+    const imgs = Array.from(files ?? []).filter((f) => f.type.startsWith('image/'));
+    if (imgs.length === 0) return;
+    imgs.forEach((f) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const url = reader.result;
+        if (typeof url === 'string') setPending((prev) => [...prev, url]);
+      };
+      reader.readAsDataURL(f);
+    });
+  };
+
   const handleSend = () => {
     const text = input.trim();
-    if (!text || streaming) return;
+    if ((!text && pending.length === 0) || streaming) return;
     setInput('');
-    sendMessage(text);
+    setPending([]);
+    sendMessage(text, pending);
   };
 
   return (
+    <>
     <div className="h-full flex">
       {/* History list */}
       <div className="w-[220px] shrink-0 border-r border-border bg-bg-card/40 flex flex-col">
@@ -138,7 +167,23 @@ export default function ChatPage() {
                       streaming ? '…' : ''
                     )
                   ) : (
-                    m.content
+                    <>
+                      {m.images && m.images.length > 0 && (
+                        <div className={`flex flex-wrap gap-1.5 ${m.content ? 'mb-1.5' : ''}`}>
+                          {m.images.map((src, k) => (
+                            <img
+                              key={k}
+                              src={src}
+                              alt={isZh ? '附件图片' : 'Attached image'}
+                              onClick={() => setPreview(src)}
+                              title={isZh ? '点击查看原图' : 'Click to view full size'}
+                              className="max-w-[160px] max-h-[160px] rounded-lg object-cover cursor-zoom-in"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      {m.content}
+                    </>
                   )}
                 </div>
               </div>
@@ -151,11 +196,78 @@ export default function ChatPage() {
         )}
 
         {/* Input */}
-        <div className="shrink-0 p-3 border-t border-border">
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            addFiles(e.dataTransfer.files);
+          }}
+          className={`shrink-0 p-3 border-t transition-colors ${
+            dragOver ? 'border-accent-orange bg-accent-orange/5' : 'border-border'
+          }`}
+        >
+          {pending.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {pending.map((src, i) => (
+                <div key={i} className="relative group">
+                  <img
+                    src={src}
+                    alt=""
+                    onClick={() => setPreview(src)}
+                    title={isZh ? '点击查看原图' : 'Click to view full size'}
+                    className="w-16 h-16 rounded-lg object-cover border border-border cursor-zoom-in"
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPending((prev) => prev.filter((_, k) => k !== i));
+                    }}
+                    title={isZh ? '移除' : 'Remove'}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center rounded-full bg-bg-primary border border-border text-text-muted hover:text-red-400 transition-colors"
+                  >
+                    <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="flex items-end gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              hidden
+              onChange={(e) => {
+                addFiles(e.target.files);
+                e.target.value = '';
+              }}
+            />
+            <button
+              onClick={() => fileRef.current?.click()}
+              title={isZh ? '添加图片' : 'Add image'}
+              className="shrink-0 p-2.5 text-text-muted hover:text-text-primary transition-colors"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" /></svg>
+            </button>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onPaste={(e) => {
+                const files = Array.from(e.clipboardData.items)
+                  .filter((it) => it.kind === 'file' && it.type.startsWith('image/'))
+                  .map((it) => it.getAsFile())
+                  .filter((f): f is File => f !== null);
+                if (files.length > 0) {
+                  e.preventDefault();
+                  addFiles(files);
+                }
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -163,12 +275,12 @@ export default function ChatPage() {
                 }
               }}
               rows={1}
-              placeholder={isZh ? '输入消息，Enter 发送，Shift+Enter 换行' : 'Type a message. Enter to send, Shift+Enter for newline'}
+              placeholder={isZh ? '输入消息，可粘贴或拖入图片。Enter 发送，Shift+Enter 换行' : 'Type a message, paste or drop images. Enter to send, Shift+Enter for newline'}
               className="flex-1 resize-none max-h-[160px] px-3 py-2.5 bg-bg-primary border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-border-glow transition-colors"
             />
             <button
               onClick={handleSend}
-              disabled={streaming || !input.trim()}
+              disabled={streaming || (!input.trim() && pending.length === 0)}
               className="shrink-0 px-4 py-2.5 bg-accent-orange text-bg-primary rounded-lg text-sm font-medium hover:bg-accent-orange/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {streaming ? (isZh ? '生成中' : 'Sending') : (isZh ? '发送' : 'Send')}
@@ -177,5 +289,30 @@ export default function ChatPage() {
         </div>
       </div>
     </div>
+
+    {/* Full-size image preview */}
+    {preview && (
+      <div
+        onClick={() => setPreview(null)}
+        className="fixed inset-0 z-50 bg-black/80 overflow-auto cursor-zoom-out"
+      >
+        <button
+          onClick={() => setPreview(null)}
+          title={isZh ? '关闭' : 'Close'}
+          className="fixed top-4 right-4 z-10 w-9 h-9 flex items-center justify-center rounded-full bg-bg-card/90 border border-border text-text-secondary hover:text-text-primary transition-colors"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+        <div className="min-h-full flex items-center justify-center p-8">
+          <img
+            src={preview}
+            alt={isZh ? '原图' : 'Full size'}
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-none cursor-default"
+          />
+        </div>
+      </div>
+    )}
+    </>
   );
 }

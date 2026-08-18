@@ -16,6 +16,7 @@ interface ErrorPayload {
 
 const emptyConfig: ChatConfig = {
   model: { baseUrl: 'https://api.openai.com', apiKey: '', model: 'gpt-4o-mini' },
+  visionModel: { baseUrl: '', apiKey: '', model: '' },
   roles: [],
   defaultRoleId: '',
 };
@@ -29,6 +30,7 @@ interface ChatState {
 
   loadConfig: () => Promise<void>;
   updateModel: (model: ChatConfig['model']) => Promise<void>;
+  updateVisionModel: (visionModel: ChatConfig['model']) => Promise<void>;
   saveRoles: (roles: ChatRole[], defaultRoleId: string) => Promise<void>;
 
   loadConversations: () => Promise<void>;
@@ -36,7 +38,7 @@ interface ChatState {
   selectConversation: (id: string) => void;
   deleteConversation: (id: string) => Promise<void>;
   setCurrentRole: (roleId: string) => void;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, images?: string[]) => Promise<void>;
 }
 
 function uid(): string {
@@ -65,6 +67,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   updateModel: async (model) => {
     const config = await invoke<ChatConfig>('update_chat_config', { model });
+    set({ config: { ...emptyConfig, ...config } });
+  },
+
+  updateVisionModel: async (visionModel) => {
+    const config = await invoke<ChatConfig>('update_chat_config', { visionModel });
     set({ config: { ...emptyConfig, ...config } });
   },
 
@@ -129,9 +136,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (conv) persist(conv);
   },
 
-  sendMessage: async (content) => {
+  sendMessage: async (content, images) => {
     const text = content.trim();
-    if (!text || get().streaming) return;
+    const pics = images ?? [];
+    if ((!text && pics.length === 0) || get().streaming) return;
 
     let { currentId } = get();
     if (!currentId) {
@@ -141,7 +149,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (!currentId) return;
 
     const now = Date.now();
-    const userMsg: ChatMessage = { role: 'user', content: text, timestamp: now };
+    const userMsg: ChatMessage = { role: 'user', content: text, images: pics, timestamp: now };
     const assistantMsg: ChatMessage = { role: 'assistant', content: '', timestamp: now };
 
     // Append user message + empty assistant placeholder.
@@ -151,9 +159,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       conversations: s.conversations.map((c) => {
         if (c.id !== currentId) return c;
         const isFirst = c.messages.length === 0;
+        const title = text ? text.slice(0, 20) : '[图片]';
         return {
           ...c,
-          title: isFirst ? text.slice(0, 20) : c.title,
+          title: isFirst ? title : c.title,
           messages: [...c.messages, userMsg, assistantMsg],
           updatedAt: now,
         };
