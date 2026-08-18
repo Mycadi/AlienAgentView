@@ -19,6 +19,7 @@ const emptyConfig: ChatConfig = {
   visionModel: { baseUrl: '', apiKey: '', model: '' },
   roles: [],
   defaultRoleId: '',
+  retentionDays: 0,
 };
 
 interface ChatState {
@@ -31,6 +32,7 @@ interface ChatState {
   loadConfig: () => Promise<void>;
   updateModel: (model: ChatConfig['model']) => Promise<void>;
   updateVisionModel: (visionModel: ChatConfig['model']) => Promise<void>;
+  updateRetention: (retentionDays: number) => Promise<void>;
   saveRoles: (roles: ChatRole[], defaultRoleId: string) => Promise<void>;
 
   loadConversations: () => Promise<void>;
@@ -72,6 +74,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   updateVisionModel: async (visionModel) => {
     const config = await invoke<ChatConfig>('update_chat_config', { visionModel });
+    set({ config: { ...emptyConfig, ...config } });
+  },
+
+  updateRetention: async (retentionDays) => {
+    const config = await invoke<ChatConfig>('update_chat_config', { retentionDays });
     set({ config: { ...emptyConfig, ...config } });
   },
 

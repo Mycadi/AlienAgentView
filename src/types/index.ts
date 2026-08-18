@@ -79,6 +79,8 @@ export interface ChatConfig {
   visionModel: ChatModelConfig;
   roles: ChatRole[];
   defaultRoleId: string;
+  /** 0 = keep forever; otherwise drop conversations older than N days. */
+  retentionDays: number;
 }
 
 export interface ChatMessage {

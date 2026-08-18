@@ -245,7 +245,7 @@ function uid(): string {
 }
 
 function ChatSettingsSection({ isZh }: { isZh: boolean }) {
-  const { config, loadConfig, updateModel, updateVisionModel, saveRoles } = useChatStore();
+  const { config, loadConfig, updateModel, updateVisionModel, updateRetention, saveRoles } = useChatStore();
 
   const [baseUrl, setBaseUrl] = useState(config.model.baseUrl);
   const [apiKey, setApiKey] = useState(config.model.apiKey);
@@ -254,6 +254,8 @@ function ChatSettingsSection({ isZh }: { isZh: boolean }) {
   const [vApiKey, setVApiKey] = useState(config.visionModel.apiKey);
   const [vModel, setVModel] = useState(config.visionModel.model);
   const [visionSaved, setVisionSaved] = useState(false);
+  const [retention, setRetention] = useState(config.retentionDays);
+  const [retentionSaved, setRetentionSaved] = useState(false);
   const [roles, setRoles] = useState<ChatRole[]>(config.roles);
   const [defaultRoleId, setDefaultRoleId] = useState(config.defaultRoleId);
   const [modelSaved, setModelSaved] = useState(false);
@@ -271,6 +273,7 @@ function ChatSettingsSection({ isZh }: { isZh: boolean }) {
     setVBaseUrl(config.visionModel.baseUrl);
     setVApiKey(config.visionModel.apiKey);
     setVModel(config.visionModel.model);
+    setRetention(config.retentionDays);
     setRoles(config.roles);
     setDefaultRoleId(config.defaultRoleId);
   }, [config]);
@@ -285,6 +288,13 @@ function ChatSettingsSection({ isZh }: { isZh: boolean }) {
     await updateVisionModel({ baseUrl: vBaseUrl.trim(), apiKey: vApiKey.trim(), model: vModel.trim() });
     setVisionSaved(true);
     setTimeout(() => setVisionSaved(false), 1500);
+  };
+
+  const saveRetention = async () => {
+    const days = Math.max(0, Math.floor(Number(retention) || 0));
+    await updateRetention(days);
+    setRetentionSaved(true);
+    setTimeout(() => setRetentionSaved(false), 1500);
   };
 
   const addRole = () => {
@@ -378,6 +388,36 @@ function ChatSettingsSection({ isZh }: { isZh: boolean }) {
             {isZh ? '保存' : 'Save'}
           </button>
           {visionSaved && <span className="text-xs text-green-400">{isZh ? '已保存' : 'Saved'}</span>}
+        </div>
+      </div>
+
+      {/* Conversation retention */}
+      <div className="bg-bg-card border border-border rounded-xl p-5">
+        <h3 className="text-sm font-medium text-text-primary mb-3">
+          {isZh ? '会话管理' : 'Conversation Retention'}
+        </h3>
+        <p className="text-xs text-text-muted mb-3">
+          {isZh
+            ? '超过指定天数的对话会在打开 Chat 时自动清理。填 0 表示永久保留。'
+            : 'Conversations older than N days are pruned when Chat opens. 0 keeps forever.'}
+        </p>
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            min={0}
+            value={retention}
+            onChange={(e) => setRetention(Number(e.target.value))}
+            placeholder="0"
+            className={`${inputCls} w-32`}
+          />
+          <span className="text-xs text-text-muted">{isZh ? '天' : 'days'}</span>
+          <button
+            onClick={saveRetention}
+            className="px-3 py-1.5 bg-accent-orange text-bg-primary rounded-lg text-sm font-medium hover:bg-accent-orange/90 transition-colors"
+          >
+            {isZh ? '保存' : 'Save'}
+          </button>
+          {retentionSaved && <span className="text-xs text-green-400">{isZh ? '已保存' : 'Saved'}</span>}
         </div>
       </div>
 

@@ -68,6 +68,9 @@ pub struct ChatConfig {
     pub roles: Vec<ChatRole>,
     #[serde(default)]
     pub default_role_id: String,
+    /// 0 = keep forever; otherwise drop conversations older than N days.
+    #[serde(default)]
+    pub retention_days: u32,
 }
 
 impl Default for ChatConfig {
@@ -77,6 +80,7 @@ impl Default for ChatConfig {
             vision_model: empty_model_config(),
             roles: Vec::new(),
             default_role_id: String::new(),
+            retention_days: 0,
         }
     }
 }
@@ -156,6 +160,7 @@ pub fn update_chat_config(
     vision_model: Option<ChatModelConfig>,
     roles: Option<Vec<ChatRole>>,
     default_role_id: Option<String>,
+    retention_days: Option<u32>,
 ) -> Result<ChatConfig, String> {
     let mut data = load_config();
     if let Some(v) = model {
@@ -163,6 +168,9 @@ pub fn update_chat_config(
     }
     if let Some(v) = vision_model {
         data.vision_model = v;
+    }
+    if let Some(v) = retention_days {
+        data.retention_days = v;
     }
     if let Some(v) = roles {
         data.roles = v;
@@ -178,7 +186,18 @@ pub fn update_chat_config(
 
 #[tauri::command]
 pub fn get_chat_conversations() -> Vec<ChatConversation> {
-    load_conversations()
+    let config = load_config();
+    let mut list = load_conversations();
+    if config.retention_days > 0 {
+        let cutoff = chrono::Utc::now().timestamp_millis()
+            - (config.retention_days as i64) * 86_400_000;
+        let before = list.len();
+        list.retain(|c| c.updated_at >= cutoff);
+        if list.len() != before {
+            let _ = save_conversations(&list);
+        }
+    }
+    list
 }
 
 #[tauri::command]
