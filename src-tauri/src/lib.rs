@@ -86,6 +86,7 @@ pub fn run() {
             chat::save_chat_conversation,
             chat::delete_chat_conversation,
             chat::chat_send,
+            chat::chat_stop,
             projects::list_user_projects,
             projects::add_user_project,
             projects::remove_user_project,

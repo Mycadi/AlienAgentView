@@ -21,6 +21,7 @@ notify = "7"
 dirs = "6"
 sysinfo = "0.33"
 tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["rt"] }
 chrono = { version = "0.4", features = ["serde"] }
 windows = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Console", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Dwm"] }
 raw-window-handle = "0.6"

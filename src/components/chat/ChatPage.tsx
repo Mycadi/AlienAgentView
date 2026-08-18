@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useChatStore } from '../../stores/chatStore';
@@ -279,11 +280,11 @@ export default function ChatPage() {
               className="flex-1 resize-none max-h-[160px] px-3 py-2.5 bg-bg-primary border border-border rounded-lg text-sm text-text-primary focus:outline-none focus:border-border-glow transition-colors"
             />
             <button
-              onClick={handleSend}
-              disabled={streaming || (!input.trim() && pending.length === 0)}
+              onClick={streaming ? () => invoke('chat_stop') : handleSend}
+              disabled={!streaming && !input.trim() && pending.length === 0}
               className="shrink-0 px-4 py-2.5 bg-accent-orange text-bg-primary rounded-lg text-sm font-medium hover:bg-accent-orange/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {streaming ? (isZh ? '生成中' : 'Sending') : (isZh ? '发送' : 'Send')}
+              {streaming ? (isZh ? '打断' : 'Stop') : (isZh ? '发送' : 'Send')}
             </button>
           </div>
         </div>

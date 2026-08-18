@@ -2,7 +2,14 @@ use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use std::sync::LazyLock;
 use tauri::Emitter;
+use tokio::sync::Mutex;
+use tokio_util::sync::CancellationToken;
+
+/// Cancellation token for the in-flight chat stream, if any.
+static CHAT_CANCEL: LazyLock<Mutex<Option<CancellationToken>>> =
+    LazyLock::new(|| Mutex::new(None));
 
 // ---------------- Data types ----------------
 
@@ -287,6 +294,13 @@ pub async fn chat_send(
         "stream": true,
     });
 
+    // Register a cancel token for this stream so chat_stop can interrupt it.
+    let cancel = CancellationToken::new();
+    {
+        let mut guard = CHAT_CANCEL.lock().await;
+        *guard = Some(cancel.clone());
+    }
+
     let client = reqwest::Client::new();
     let resp = client
         .post(&url)
@@ -311,16 +325,27 @@ pub async fn chat_send(
     let mut stream = resp.bytes_stream();
     let mut buffer = String::new();
 
-    while let Some(chunk) = stream.next().await {
-        let chunk = match chunk {
-            Ok(c) => c,
-            Err(e) => {
-                let msg = format!("流读取失败: {e}");
+    loop {
+        // Race the next stream chunk against cancellation.
+        let chunk = tokio::select! {
+            _ = cancel.cancelled() => {
                 let _ = app.emit(
-                    "chat-error",
-                    ErrorPayload { conv_id: conv_id.clone(), message: msg.clone() },
+                    "chat-stream",
+                    StreamPayload { conv_id: conv_id.clone(), delta: String::new(), done: true },
                 );
-                return Err(msg);
+                return Ok(());
+            }
+            next = stream.next() => match next {
+                Some(Ok(c)) => c,
+                Some(Err(e)) => {
+                    let msg = format!("流读取失败: {e}");
+                    let _ = app.emit(
+                        "chat-error",
+                        ErrorPayload { conv_id: conv_id.clone(), message: msg.clone() },
+                    );
+                    return Err(msg);
+                }
+                None => break,
             }
         };
         buffer.push_str(&String::from_utf8_lossy(&chunk));
@@ -363,5 +388,15 @@ pub async fn chat_send(
         "chat-stream",
         StreamPayload { conv_id: conv_id.clone(), delta: String::new(), done: true },
     );
+    Ok(())
+}
+
+/// Stop the in-flight chat stream, if any. No-op when idle.
+#[tauri::command]
+pub async fn chat_stop() -> Result<(), String> {
+    let mut guard = CHAT_CANCEL.lock().await;
+    if let Some(token) = guard.take() {
+        token.cancel();
+    }
     Ok(())
 }
