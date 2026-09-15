@@ -75,8 +75,6 @@ export interface ChatRole {
 
 export interface ChatConfig {
   model: ChatModelConfig;
-  /** Empty fields fall back to `model`. */
-  visionModel: ChatModelConfig;
   roles: ChatRole[];
   defaultRoleId: string;
   /** 0 = keep forever; otherwise drop conversations older than N days. */

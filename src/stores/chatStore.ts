@@ -16,7 +16,6 @@ interface ErrorPayload {
 
 const emptyConfig: ChatConfig = {
   model: { baseUrl: 'https://api.openai.com', apiKey: '', model: 'gpt-4o-mini' },
-  visionModel: { baseUrl: '', apiKey: '', model: '' },
   roles: [],
   defaultRoleId: '',
   retentionDays: 0,
@@ -31,7 +30,6 @@ interface ChatState {
 
   loadConfig: () => Promise<void>;
   updateModel: (model: ChatConfig['model']) => Promise<void>;
-  updateVisionModel: (visionModel: ChatConfig['model']) => Promise<void>;
   updateRetention: (retentionDays: number) => Promise<void>;
   saveRoles: (roles: ChatRole[], defaultRoleId: string) => Promise<void>;
 
@@ -69,11 +67,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   updateModel: async (model) => {
     const config = await invoke<ChatConfig>('update_chat_config', { model });
-    set({ config: { ...emptyConfig, ...config } });
-  },
-
-  updateVisionModel: async (visionModel) => {
-    const config = await invoke<ChatConfig>('update_chat_config', { visionModel });
     set({ config: { ...emptyConfig, ...config } });
   },
 

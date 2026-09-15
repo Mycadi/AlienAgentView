@@ -245,15 +245,11 @@ function uid(): string {
 }
 
 function ChatSettingsSection({ isZh }: { isZh: boolean }) {
-  const { config, loadConfig, updateModel, updateVisionModel, updateRetention, saveRoles } = useChatStore();
+  const { config, loadConfig, updateModel, updateRetention, saveRoles } = useChatStore();
 
   const [baseUrl, setBaseUrl] = useState(config.model.baseUrl);
   const [apiKey, setApiKey] = useState(config.model.apiKey);
   const [model, setModel] = useState(config.model.model);
-  const [vBaseUrl, setVBaseUrl] = useState(config.visionModel.baseUrl);
-  const [vApiKey, setVApiKey] = useState(config.visionModel.apiKey);
-  const [vModel, setVModel] = useState(config.visionModel.model);
-  const [visionSaved, setVisionSaved] = useState(false);
   const [retention, setRetention] = useState(config.retentionDays);
   const [retentionSaved, setRetentionSaved] = useState(false);
   const [roles, setRoles] = useState<ChatRole[]>(config.roles);
@@ -270,9 +266,6 @@ function ChatSettingsSection({ isZh }: { isZh: boolean }) {
     setBaseUrl(config.model.baseUrl);
     setApiKey(config.model.apiKey);
     setModel(config.model.model);
-    setVBaseUrl(config.visionModel.baseUrl);
-    setVApiKey(config.visionModel.apiKey);
-    setVModel(config.visionModel.model);
     setRetention(config.retentionDays);
     setRoles(config.roles);
     setDefaultRoleId(config.defaultRoleId);
@@ -282,12 +275,6 @@ function ChatSettingsSection({ isZh }: { isZh: boolean }) {
     await updateModel({ baseUrl: baseUrl.trim(), apiKey: apiKey.trim(), model: model.trim() });
     setModelSaved(true);
     setTimeout(() => setModelSaved(false), 1500);
-  };
-
-  const saveVisionModel = async () => {
-    await updateVisionModel({ baseUrl: vBaseUrl.trim(), apiKey: vApiKey.trim(), model: vModel.trim() });
-    setVisionSaved(true);
-    setTimeout(() => setVisionSaved(false), 1500);
   };
 
   const saveRetention = async () => {
@@ -353,41 +340,6 @@ function ChatSettingsSection({ isZh }: { isZh: boolean }) {
             {isZh ? '保存' : 'Save'}
           </button>
           {modelSaved && <span className="text-xs text-green-400">{isZh ? '已保存' : 'Saved'}</span>}
-        </div>
-      </div>
-
-      {/* Vision model */}
-      <div className="bg-bg-card border border-border rounded-xl p-5">
-        <h3 className="text-sm font-medium text-text-primary mb-3">
-          {isZh ? '视觉模型' : 'Vision Model'}
-        </h3>
-        <p className="text-xs text-text-muted mb-3">
-          {isZh
-            ? '发送图片时使用。任一项留空则沿用上方对话模型的对应配置。'
-            : 'Used when sending images. Any field left empty falls back to the chat model above.'}
-        </p>
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs text-text-muted mb-1">Base URL</label>
-            <input type="text" value={vBaseUrl} onChange={(e) => setVBaseUrl(e.target.value)} placeholder={isZh ? '留空沿用对话模型' : 'Inherit from chat model'} className={inputCls} />
-          </div>
-          <div>
-            <label className="block text-xs text-text-muted mb-1">API Key</label>
-            <input type="password" value={vApiKey} onChange={(e) => setVApiKey(e.target.value)} placeholder={isZh ? '留空沿用对话模型' : 'Inherit from chat model'} className={inputCls} />
-          </div>
-          <div>
-            <label className="block text-xs text-text-muted mb-1">{isZh ? '模型名称' : 'Model'}</label>
-            <input type="text" value={vModel} onChange={(e) => setVModel(e.target.value)} placeholder="gpt-4o" className={inputCls} />
-          </div>
-        </div>
-        <div className="mt-3 flex items-center gap-3">
-          <button
-            onClick={saveVisionModel}
-            className="px-3 py-1.5 bg-accent-orange text-bg-primary rounded-lg text-sm font-medium hover:bg-accent-orange/90 transition-colors"
-          >
-            {isZh ? '保存' : 'Save'}
-          </button>
-          {visionSaved && <span className="text-xs text-green-400">{isZh ? '已保存' : 'Saved'}</span>}
         </div>
       </div>
 

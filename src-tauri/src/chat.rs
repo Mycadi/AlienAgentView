@@ -42,12 +42,7 @@ fn default_model() -> String {
     "gpt-4o-mini".to_string()
 }
 
-/// All-empty config, so unset vision fields fall back to the chat model.
-fn empty_model_config() -> ChatModelConfig {
-    ChatModelConfig { base_url: String::new(), api_key: String::new(), model: String::new() }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatRole {
     pub id: String,
@@ -56,14 +51,11 @@ pub struct ChatRole {
     pub system_prompt: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatConfig {
     #[serde(default)]
     pub model: ChatModelConfig,
-    /// Optional. Empty fields fall back to `model`.
-    #[serde(default = "empty_model_config")]
-    pub vision_model: ChatModelConfig,
     #[serde(default)]
     pub roles: Vec<ChatRole>,
     #[serde(default)]
@@ -71,18 +63,6 @@ pub struct ChatConfig {
     /// 0 = keep forever; otherwise drop conversations older than N days.
     #[serde(default)]
     pub retention_days: u32,
-}
-
-impl Default for ChatConfig {
-    fn default() -> Self {
-        Self {
-            model: ChatModelConfig::default(),
-            vision_model: empty_model_config(),
-            roles: Vec::new(),
-            default_role_id: String::new(),
-            retention_days: 0,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -157,7 +137,6 @@ pub fn get_chat_config() -> ChatConfig {
 #[tauri::command]
 pub fn update_chat_config(
     model: Option<ChatModelConfig>,
-    vision_model: Option<ChatModelConfig>,
     roles: Option<Vec<ChatRole>>,
     default_role_id: Option<String>,
     retention_days: Option<u32>,
@@ -165,9 +144,6 @@ pub fn update_chat_config(
     let mut data = load_config();
     if let Some(v) = model {
         data.model = v;
-    }
-    if let Some(v) = vision_model {
-        data.vision_model = v;
     }
     if let Some(v) = retention_days {
         data.retention_days = v;
@@ -220,20 +196,6 @@ pub fn delete_chat_conversation(id: String) -> Result<(), String> {
 
 // ---------------- Streaming send ----------------
 
-/// Vision config with each empty field falling back to the chat model.
-fn resolve_vision(config: &ChatConfig) -> ChatModelConfig {
-    let v = &config.vision_model;
-    let m = &config.model;
-    let pick = |a: &str, b: &str| {
-        if a.trim().is_empty() { b.trim().to_string() } else { a.trim().to_string() }
-    };
-    ChatModelConfig {
-        base_url: pick(&v.base_url, &m.base_url),
-        api_key: pick(&v.api_key, &m.api_key),
-        model: pick(&v.model, &m.model),
-    }
-}
-
 /// OpenAI message content: plain string, or multimodal array when images exist.
 fn message_content(m: &ChatMessage) -> serde_json::Value {
     if m.images.is_empty() {
@@ -275,8 +237,7 @@ pub async fn chat_send(
     messages: Vec<ChatMessage>,
 ) -> Result<(), String> {
     let config = load_config();
-    let has_images = messages.iter().any(|m| !m.images.is_empty());
-    let model = if has_images { resolve_vision(&config) } else { config.model.clone() };
+    let model = config.model.clone();
 
     if model.api_key.trim().is_empty() {
         return Err("未配置 API Key，请在设置中填写".to_string());
